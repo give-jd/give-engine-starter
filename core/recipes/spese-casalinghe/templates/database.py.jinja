@@ -1,0 +1,91 @@
+"""Persistence layer per Le Mie Spese — generato da Gi.Ve Engine ({{ generated_at }})."""
+
+from __future__ import annotations
+
+import sqlite3
+from contextlib import contextmanager
+from pathlib import Path
+
+import pandas as pd
+
+
+DB_PATH = Path(__file__).resolve().parent / "spese.db"
+
+CATEGORIE = [
+    "Casa",
+    "Alimentari",
+    "Auto",
+    "Bollette",
+    "Salute",
+    "Svago",
+    "Altro",
+]
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS spese (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    data TEXT NOT NULL,
+    categoria TEXT NOT NULL,
+    importo REAL NOT NULL CHECK (importo > 0),
+    descrizione TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_spese_data ON spese(data);
+CREATE INDEX IF NOT EXISTS idx_spese_categoria ON spese(categoria);
+"""
+
+
+@contextmanager
+def _connect():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        yield conn
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def ensure_schema() -> None:
+    with _connect() as conn:
+        conn.executescript(SCHEMA)
+
+
+def insert_spesa(data_iso: str, categoria: str, importo: float, descrizione: str) -> int:
+    if categoria not in CATEGORIE:
+        raise ValueError(f"Categoria non valida: {categoria}")
+    if importo <= 0:
+        raise ValueError("L'importo deve essere positivo.")
+    with _connect() as conn:
+        cur = conn.execute(
+            "INSERT INTO spese (data, categoria, importo, descrizione) VALUES (?, ?, ?, ?)",
+            (data_iso, categoria, importo, descrizione),
+        )
+        return int(cur.lastrowid)
+
+
+def delete_spesa(spesa_id: int) -> None:
+    with _connect() as conn:
+        conn.execute("DELETE FROM spese WHERE id = ?", (spesa_id,))
+
+
+def fetch_all() -> pd.DataFrame:
+    ensure_schema()
+    with _connect() as conn:
+        return pd.read_sql_query(
+            "SELECT id, data, categoria, importo, descrizione FROM spese ORDER BY data DESC, id DESC",
+            conn,
+        )
+
+
+def monthly_totals() -> pd.DataFrame:
+    with _connect() as conn:
+        return pd.read_sql_query(
+            "SELECT substr(data, 1, 7) AS mese, SUM(importo) AS totale "
+            "FROM spese GROUP BY mese ORDER BY mese DESC",
+            conn,
+        )
+
+
+if __name__ == "__main__":
+    ensure_schema()
+    print(f"Database pronto in {DB_PATH}")

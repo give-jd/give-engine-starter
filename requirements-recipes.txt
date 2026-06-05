@@ -1,0 +1,26 @@
+# Dipendenze RUNTIME delle ricette del catalogo.
+#
+# L'orchestrator lancia gli app.py delle ricette con il python di QUESTO venv,
+# quindi queste librerie servono perché le app partano (altrimenti `streamlit
+# run` esce subito -> "connessione rifiutata" sulla porta dell'app).
+#
+# Installato SOLO dall'installer (install.sh / install.ps1) e da `givengine
+# update`. NON da Vercel: le serverless function in api/ non ne hanno bisogno
+# e questo file le terrebbe sotto il limite di dimensione.
+#
+# Unione delle requirements dichiarate dalle ricette.
+streamlit>=1.32        # >=1.31 per st.dialog (modali scadenze-auto-casa)
+streamlit-geolocation>=0.0.10  # geolocalizzazione device — osservaprezzi-carburanti
+pandas>=2.0
+plotly>=5.18
+Pillow>=10.0
+reportlab>=4.0
+python-dateutil>=2.8
+defusedxml>=0.7
+exifread>=3.0
+pdfminer.six>=20240706
+cryptography>=42.0
+argon2-cffi>=23.1
+openpyxl>=3.1        # export Excel (pandas.to_excel) — es. spese-casalinghe
+# NB: pytesseract richiede il binario di sistema `tesseract` per l'OCR; le
+# ricette che lo usano degradano senza, quindi resta opzionale (non elencato).

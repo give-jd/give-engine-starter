@@ -1,0 +1,101 @@
+# Bundle "Studio Pro Tributario" - Catalogo €99/mese
+#
+# Aggregato 8 ricette per commercialisti ODCEC con pratiche complesse.
+# Estende "P.IVA Completa" con atheneo-fiscale-cassazione (RAG verticale).
+#
+# Tag git per ogni componente:
+# - recipe-vault-clienti-v1.0.0
+# - recipe-agenda-studio-v1.0.0
+# - recipe-atheneo-light-v0.3.0
+# - recipe-archivio-fe-sdi-v1.0.1
+# - recipe-forfettario-watcher-v1.0.1
+# - recipe-corrispettivi-telematici-v1.0.0
+# - recipe-regime-fiscale-advisor-v1.0.0
+# - recipe-atheneo-fiscale-cassazione-v1.0.0 (Q2-2027 anticipato)
+#
+# Riferimento knowledge: givegroup-knowledge/give-engine/BUNDLE-STUDIO-PRO-TRIBUTARIO.md
+# Riferimento roadmap: givegroup-knowledge/give-engine/ROADMAP-Q2-2027.md (W11)
+
+id: studio-pro-tributario
+name: "Studio Pro Tributario"
+tier: catalog
+prezzo_mensile_eur: 99
+prezzo_annuale_eur: 990
+sconto_annuale_pct: 17
+created_at: "2026-05-29T00:00:00Z"
+estensione_di: p-iva-completa
+
+descrizione_breve: >
+  Tutto P.IVA Completa + assistente RAG verticale Cassazione tributaria,
+  circolari AdE, risposte interpello con citation strict. 8 ricette, 1 master password.
+
+target_audience: >
+  Commercialisti iscritti ODCEC con pratiche complesse (interpelli, contenzioso,
+  pianificazione fiscale, transizione regime).
+
+componenti:
+  - id: vault-clienti
+    versione_min: "1.0.0"
+    ruolo: "Anagrafica clienti cifrata"
+    crypto_dep: true
+
+  - id: agenda-studio
+    versione_min: "1.0.0"
+    ruolo: "Calendario + scadenze"
+    crypto_dep: true
+
+  - id: atheneo-light
+    versione_min: "0.3.0"
+    ruolo: "RAG semantico generale"
+    crypto_dep: false
+
+  - id: archivio-fe-sdi
+    versione_min: "1.0.1"
+    ruolo: "Archivio FE B2B"
+    crypto_dep: true
+
+  - id: forfettario-watcher
+    versione_min: "1.0.1"
+    ruolo: "Soglia 85k + Quadro LM"
+    crypto_dep: false
+
+  - id: corrispettivi-telematici
+    versione_min: "1.0.0"
+    ruolo: "Cassa RT + LIPE"
+    crypto_dep: false
+
+  - id: regime-fiscale-advisor
+    versione_min: "1.0.0"
+    ruolo: "Comparator 5 regimi"
+    crypto_dep: false
+
+  - id: atheneo-fiscale-cassazione
+    versione_min: "1.0.0"
+    ruolo: "RAG Cassazione tributaria + AdE + interpelli con citation strict"
+    crypto_dep: true
+
+caratteristiche_chiave:
+  - "Master password unica per tutte e 8 le ricette"
+  - "RAG verticale Cassazione tributaria + circolari AdE"
+  - "Citation strict (no citation = rigenerazione automatica)"
+  - "Pratiche cliente pseudonimizzate"
+  - "Audit query log immutabile"
+  - "Backend RAG sqlite-vec + multilingual-e5-base IT (local-first)"
+  - "Zero cloud, zero endpoint Gi.Ve (Punto 14)"
+
+gdpr_value_props:
+  - "Titolare unico tu (commercialista ODCEC)"
+  - "Cliente = contitolare per pratica"
+  - "Niente DPA con Gi.Ve"
+
+cosa_NON_fa:
+  - "Non emette pareri vincolanti"
+  - "Non sostituisce ODCEC per consulenza professionale"
+  - "Non si collega a Entratel/Fisconline"
+  - "Non multi-utente LAN (Atheneo Pro Q3-2027+)"
+
+upgrade_path:
+  da: p-iva-completa
+  delta_prezzo_mensile_eur: 20
+  delta_ricette: 1
+  motivazione: "Assistente RAG verticale Cassazione tributaria + AdE = moat curation Gi.Ve"

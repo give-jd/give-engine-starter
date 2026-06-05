@@ -1,0 +1,87 @@
+# Bundle "Studio Sanitario" - Catalogo €59/mese
+#
+# Aggregato 3 ricette per professionisti sanitari NON medici (fisio/osteo/psy/logo/nutri).
+# Distinto dal bundle Studio Medico (riservato a medici FNOMCeO).
+#
+# Tag git per ogni componente:
+# - recipe-cartella-clinica-light-v1.0.0 (Q1-2028 NEW)
+# - recipe-vault-clienti-v1.0.0
+# - recipe-agenda-studio-v1.0.0
+#
+# Riferimento knowledge: givegroup-knowledge/give-engine/BUNDLE-STUDIO-SANITARIO.md
+# Riferimento roadmap: givegroup-knowledge/give-engine/ROADMAP-Q1-2028.md (W13)
+
+id: studio-sanitario
+name: "Studio Sanitario"
+tier: catalog
+prezzo_mensile_eur: 59
+prezzo_annuale_eur: 590
+sconto_annuale_pct: 17
+created_at: "2026-05-30T00:00:00Z"
+
+descrizione_breve: >
+  Cartella clinica leggera + vault pazienti cifrato + agenda appuntamenti.
+  3 ricette per fisioterapisti, osteopati, psicologi, logopedisti, nutrizionisti.
+  Dati art.9 GDPR sul tuo PC.
+
+target_audience: >
+  Professionisti sanitari non-medici con studio singolo o piccolo associato.
+  Mercato addressable italiano (Albi professionali):
+  - Fisioterapisti: ~80k
+  - Psicologi: ~115k
+  - Logopedisti: ~13k
+  - Nutrizionisti/Dietisti: ~12k
+  - Osteopati (Reg.Ministero Salute): ~8k
+  - Totale TAM: ~230k
+
+componenti:
+  - id: cartella-clinica-light
+    versione_min: "1.0.0"
+    ruolo: "Pazienti + sedute + scale valutazione (Tinetti/Barthel/GAD-7/PHQ-9/VHI-10/MNA) + consensi GDPR art.9 + audit log (NEW Q1-2028)"
+    crypto_dep: true
+
+  - id: vault-clienti
+    versione_min: "1.0.0"
+    ruolo: "Anagrafica pazienti cifrata (segreto professionale)"
+    crypto_dep: true
+
+  - id: agenda-studio
+    versione_min: "1.0.0"
+    ruolo: "Appuntamenti + reminder + sedute pianificate"
+    crypto_dep: true
+    companion_di: cartella-clinica-light
+
+caratteristiche_chiave:
+  - "Master password unica per tutte e 3 le ricette"
+  - "AES-256-GCM at-rest tramite core/shared/crypto/ v0.1.0"
+  - "Scale valutazione validate: Tinetti POMA, Barthel ADL, GAD-7, PHQ-9, VHI-10, MNA"
+  - "Cartella clinica con anamnesi + sedute + diagnosi funzionale"
+  - "Consensi GDPR art.9 con scadenza + revoca + storico"
+  - "Audit log completo accessi cartella"
+  - "Generazione consensi PDF firmati"
+  - "Documenti collegati al vault esterno (referti RX, esami)"
+  - "Zero cloud, zero endpoint Gi.Ve (Punto 14)"
+
+gdpr_value_props:
+  - "Tu professionista = titolare unico (segreto professionale)"
+  - "Paziente = contitolare con consenso GDPR art.9 (dati sanitari)"
+  - "Niente DPA con Gi.Ve"
+  - "Dati cifrati at-rest art.32 GDPR"
+  - "Audit log accessi cartella (compliance art.32)"
+
+distinzione_da_studio_medico:
+  - "Studio Medico (EUR 69) è per MEDICI iscritti FNOMCeO con atheneo-medico-cds (CDSS)"
+  - "Studio Sanitario (EUR 59) è per PROFESSIONISTI SANITARI non-medici senza CDSS"
+  - "Cartella clinica light è meno strutturata di atheneo-medico-cds (no library PNLG-ISS)"
+
+cosa_NON_fa:
+  - "Non sostituisce visita medica o diagnosi clinica medica"
+  - "Non emette ricette o prescrizioni mediche (riservato medici)"
+  - "Non si collega a SISS regionale / Tessera Sanitaria"
+  - "Non gestisce fatturazione TS prestazioni sanitarie"
+  - "Non multi-utente LAN (Atheneo Pro processo dev dedicato separato, Punto 25)"
+
+compliance_frameworks:
+  - gdpr-art-9-dati-sanitari
+  - gdpr-art-30-registro
+  - codice-deontologico-rispettiva-professione

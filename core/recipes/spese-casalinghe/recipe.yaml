@@ -1,0 +1,35 @@
+id: spese-casalinghe
+tier: starter
+versione: "1.0.0"
+created_at: "2026-05-15T00:00:00Z"
+updated_at: "2026-05-22T00:00:00Z"
+novita_changelog: "Versione iniziale"
+nome_visualizzato: "Spese Casalinghe"
+descrizione_breve: "Tieni traccia delle spese di casa con grafici automatici"
+descrizione_estesa: >
+  Un'app web personale per registrare le spese quotidiane della famiglia.
+  Aggiungi una spesa in pochi secondi, scegli la categoria, vedi subito i
+  totali del mese e un grafico chiaro per capire dove vanno i soldi.
+  I dati restano sul tuo PC: niente cloud, niente account.
+tempo_stimato_costruzione_secondi: 45
+moduli_attivati:
+  - database_locale
+  - form_inserimento
+  - grafico_categorie
+  - esportazione_excel
+  - tema_scuro
+prerequisiti_hardware:
+  ram_minima_gb: 4
+  python_minimo: "3.10"
+  spazio_disco_mb: 80
+domande_human_in_loop:
+  - id: q1
+    domanda_italiano: "Vuoi che l'app sia accessibile anche dal tuo telefono nella rete di casa?"
+    opzioni:
+      - "Sì, accesso da telefono"
+      - "No, solo dal mio PC"
+    impatto_tecnico: "binding 0.0.0.0 vs localhost"
+    default: "No, solo dal mio PC"
+porta_locale: 8501
+output_dir_default: "~/GiveEngine_apps/spese-casalinghe"
+streamlit_entrypoint: "app.py"

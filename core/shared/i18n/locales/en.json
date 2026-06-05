@@ -1,0 +1,51 @@
+{
+  "common": {
+    "yes": "Yes",
+    "no": "No",
+    "ok": "OK",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Operation succeeded",
+    "warning": "Warning",
+    "back": "Back",
+    "next": "Next",
+    "close": "Close"
+  },
+  "auth": {
+    "vault_locked": "Vault locked",
+    "vault_unlocked": "Vault unlocked",
+    "master_password": "Master password",
+    "unlock": "Unlock",
+    "lock": "Lock",
+    "recovery_phrase": "Recovery phrase",
+    "tampering_detected": "Tampering detected on encrypted record"
+  },
+  "recipe": {
+    "farmacia": {
+      "title": "Pharmacy Practice",
+      "subtitle": "Customers, prescriptions, dispensations, DCR, pharmacovigilance",
+      "consenso_dcr_required": "DCR consent required for consultation"
+    },
+    "rspp": {
+      "title": "RSPP Practice",
+      "subtitle": "D.Lgs 81/2008. Companies, DVR, training, health surveillance",
+      "formazione_scadenza_60gg": "Training expiring within next 60 days"
+    },
+    "agricoltura_bio": {
+      "title": "Organic Farming Practice",
+      "subtitle": "EU Reg 2018/848. Plots, crops, treatments, inspections",
+      "trattamento_non_conforme": "Treatment not compliant with organic regime"
+    }
+  },
+  "ui": {
+    "dashboard": "Dashboard",
+    "settings": "Settings",
+    "logout": "Log out",
+    "n_results": "{n} results found"
+  }
+}

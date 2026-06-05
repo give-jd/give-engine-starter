@@ -1,0 +1,69 @@
+# Bundle "DPO Self-Help" - Catalogo €39/mese
+#
+# Aggregato 2 ricette per PMI/studi che devono mantenere il Registro
+# Trattamenti GDPR art.30 senza pagare DPO esterno full-time.
+#
+# Tag git per ogni componente:
+# - recipe-registro-trattamenti-gdpr-v1.0.0 (Q1-2028 NEW)
+# - recipe-vault-clienti-v1.0.0
+#
+# Riferimento knowledge: givegroup-knowledge/give-engine/BUNDLE-DPO-SELF-HELP.md
+# Riferimento roadmap: givegroup-knowledge/give-engine/ROADMAP-Q1-2028.md (W12)
+
+id: dpo-self-help
+name: "DPO Self-Help"
+tier: catalog
+prezzo_mensile_eur: 39
+prezzo_annuale_eur: 390
+sconto_annuale_pct: 17
+created_at: "2026-05-30T00:00:00Z"
+
+descrizione_breve: >
+  Il tuo Registro Trattamenti GDPR art.30 sul tuo PC + vault DPA fornitori cifrato.
+  Template pre-compilati per 10 professioni italiane. Niente DPO esterno full-time.
+
+target_audience: >
+  PMI e studi professionali italiani che hanno obbligo di mantenere il Registro
+  art.30 ma non hanno risorse per un DPO esterno full-time. Mercato addressable
+  italiano: ~600k PMI + ~200k studi professionali = ~800k entità.
+
+componenti:
+  - id: registro-trattamenti-gdpr
+    versione_min: "1.0.0"
+    ruolo: "Registro art.30 GDPR + template 10 professioni + revisioni storiche + responsabili esterni (NEW Q1-2028)"
+
+  - id: vault-clienti
+    versione_min: "1.0.0"
+    ruolo: "Vault DPA firmate + scadenze contratti responsabili esterni (cifrato AES-256)"
+    crypto_dep: true
+
+caratteristiche_chiave:
+  - "Registro art.30 GDPR compliant"
+  - "Template pre-compilati: Avvocato + Commercialista + Medico + Fisio + Psy + Arch/Ing + Geometra + Amm.condominio + Esercente food + Sito/e-commerce"
+  - "Revisioni storiche append-only (audit trail)"
+  - "Gestione responsabili esterni + DPA firmate"
+  - "Alert DPA in scadenza"
+  - "Export JSON + Markdown pronto ispezione Garante"
+  - "Master password unica"
+  - "Zero cloud, zero endpoint Gi.Ve"
+
+gdpr_value_props:
+  - "Tu titolare = autonomia gestione GDPR"
+  - "Niente DPA con Gi.Ve (Punto 22)"
+  - "Self-help DPO: tu compili, noi ti guidiamo"
+  - "Niente lock-in: i tuoi dati sempre sul tuo PC"
+
+cosa_NON_fa:
+  - "Non emette pareri DPO certificati (non sostituisce DPO certificato Reg.UE 679/2016)"
+  - "Non valuta DPIA (Data Protection Impact Assessment)"
+  - "Non emette notifiche data breach Garante (resta tuo)"
+  - "Non gestisce richieste interessati art.15-22 (resta tuo)"
+
+compliance_frameworks:
+  - gdpr-art-30-registro-trattamenti
+  - gdpr-art-32-misure-sicurezza
+  - codice-privacy-italiano-d-lgs-196-2003
+
+note_legali:
+  - "Il software supporta nella compilazione, ma la responsabilità di compliance resta del titolare ex art.5 GDPR (accountability)."
+  - "Se ti serve un DPO certificato, contatta professionisti accreditati TÜV/AICQ-SICEV."

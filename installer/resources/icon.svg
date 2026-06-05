@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Gi.Ve Engine - icon vector master
+  Editable source for the PNG/ICO/ICNS pipeline.
+  See installer/resources/DESIGN_BRIEF.md for the design spec.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#7C3AED" />
+      <stop offset="100%" stop-color="#06B6D4" />
+    </linearGradient>
+
+    <linearGradient id="highlight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"  stop-color="#FFFFFF" stop-opacity="0.18" />
+      <stop offset="60%" stop-color="#FFFFFF" stop-opacity="0.00" />
+    </linearGradient>
+
+    <filter id="gshadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="12" />
+      <feOffset dx="6" dy="14" result="off" />
+      <feComponentTransfer><feFuncA type="linear" slope="0.55" /></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <filter id="gglow">
+      <feGaussianBlur stdDeviation="20" />
+    </filter>
+  </defs>
+
+  <!-- Rounded square base: Apple-style 22% corner radius -->
+  <rect x="0" y="0" width="1024" height="1024" rx="225" ry="225" fill="url(#bg)" />
+
+  <!-- Top inner highlight band -->
+  <rect x="55" y="55" width="914" height="370" rx="160" ry="160" fill="url(#highlight)" />
+
+  <!-- Glow halo behind G -->
+  <g filter="url(#gglow)" opacity="0.7">
+    <text x="512" y="678"
+          font-family="'Inter','Space Grotesk','DejaVu Sans',sans-serif"
+          font-weight="800"
+          font-size="640"
+          fill="#FFFFFF"
+          text-anchor="middle">G</text>
+  </g>
+
+  <!-- Main G letter -->
+  <g filter="url(#gshadow)">
+    <text x="512" y="678"
+          font-family="'Inter','Space Grotesk','DejaVu Sans',sans-serif"
+          font-weight="800"
+          font-size="640"
+          fill="#FFFFFF"
+          text-anchor="middle">G</text>
+  </g>
+
+  <!-- Bottom-right accent dot (the '.' from 'Gi.Ve') -->
+  <circle cx="820" cy="800" r="38" fill="#FFFFFF" fill-opacity="0.92" />
+</svg>

@@ -1,0 +1,54 @@
+{
+  "manifest_version": "1",
+  "generated_at": "2026-05-27T00:00:00Z",
+  "skills": [
+    {
+      "slug": "manuali-anthropic",
+      "name": "Manuali Anthropic",
+      "description": "Documentazione ufficiale Claude API, Claude Code, Skills, MCP.",
+      "version": "2026-W22",
+      "embedder_model": "multilingual-e5-base",
+      "dimension": 768,
+      "chunks_count": 1240,
+      "size_mb": 32.5,
+      "signature": "STUB-NOT-VERIFIED-V0.1",
+      "download_url": "https://cdn.givegroup.it/atheneo-library/manuali-anthropic-2026-W22.atheneo-light"
+    },
+    {
+      "slug": "bandi-pnrr",
+      "name": "Bandi PNRR",
+      "description": "Bandi PNRR aggiornati settimanalmente, fonte MIMIT.",
+      "version": "2026-W22",
+      "embedder_model": "multilingual-e5-base",
+      "dimension": 768,
+      "chunks_count": 5670,
+      "size_mb": 142.8,
+      "signature": "STUB-NOT-VERIFIED-V0.1",
+      "download_url": "https://cdn.givegroup.it/atheneo-library/bandi-pnrr-2026-W22.atheneo-light"
+    },
+    {
+      "slug": "gdpr-italiano",
+      "name": "GDPR italiano + provvedimenti Garante",
+      "description": "Reg. UE 2016/679, D.Lgs 196/2003 modificato, provvedimenti del Garante.",
+      "version": "2026-W22",
+      "embedder_model": "multilingual-e5-base",
+      "dimension": 768,
+      "chunks_count": 3420,
+      "size_mb": 78.2,
+      "signature": "STUB-NOT-VERIFIED-V0.1",
+      "download_url": "https://cdn.givegroup.it/atheneo-library/gdpr-italiano-2026-W22.atheneo-light"
+    },
+    {
+      "slug": "manuali-anthropic-pro",
+      "name": "Manuali Anthropic (variante Atheneo Pro)",
+      "description": "Stessa skill manuali-anthropic, vettori bge-m3 per Atheneo Pro.",
+      "version": "2026-W22",
+      "embedder_model": "bge-m3",
+      "dimension": 1024,
+      "chunks_count": 1240,
+      "size_mb": 42.1,
+      "signature": "STUB-NOT-VERIFIED-V0.1",
+      "download_url": "https://cdn.givegroup.it/atheneo-library/manuali-anthropic-pro-2026-W22.atheneo-pro"
+    }
+  ]
+}

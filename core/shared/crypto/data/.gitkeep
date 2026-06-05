@@ -1,0 +1,6 @@
+# Directory placeholder per asset modulo crypto.
+#
+# Contenuti pianificati Pre-Q3 W2-W3:
+# - bip39-it-2048.txt — wordlist BIP-39 italiana 2048 termini canonical
+#   Source: https://github.com/bitcoin/bips/blob/master/bip-0039/italian.txt
+#   SHA-256 hash documentato in tests/kat/kat_recovery_bip39.py

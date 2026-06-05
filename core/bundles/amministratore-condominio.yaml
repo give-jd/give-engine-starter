@@ -1,0 +1,68 @@
+# Bundle "Amministratore Condominio" - Catalogo €59/mese
+#
+# Aggregato 3 ricette verticali per amministratore condominio professionale.
+#
+# Tag git per ogni componente:
+# - recipe-condominio-manutenzioni-v1.0.0 (Q1-2027 anticipato)
+# - recipe-vault-clienti-v1.0.0
+# - recipe-agenda-studio-v1.0.0
+#
+# Riferimento knowledge: givegroup-knowledge/give-engine/BUNDLE-AMMINISTRATORE-CONDOMINIO.md
+# Riferimento roadmap: givegroup-knowledge/give-engine/ROADMAP-Q1-2027.md (W13)
+
+id: amministratore-condominio
+name: "Amministratore Condominio"
+tier: catalog
+prezzo_mensile_eur: 59
+prezzo_annuale_eur: 590
+sconto_annuale_pct: 17
+created_at: "2026-05-29T00:00:00Z"
+
+descrizione_breve: >
+  Bonifici parlanti, ritenute 4%, CU annuale, scadenziario revisioni.
+  3 ricette per amministratore condominio LSP iscritto o abilitato L.4/2013.
+
+target_audience: >
+  Amministratori condominio professionali (LSP iscritti + abilitati L.4/2013).
+  Mercato addressable italiano: ~30k professionisti.
+
+componenti:
+  - id: condominio-manutenzioni
+    versione_min: "1.0.0"
+    ruolo: "Anagrafica + bonifico + CU + scadenze revisioni"
+    crypto_dep: false
+
+  - id: vault-clienti
+    versione_min: "1.0.0"
+    ruolo: "Condomini come clienti (anagrafica cifrata)"
+    crypto_dep: true
+    companion_di: condominio-manutenzioni
+
+  - id: agenda-studio
+    versione_min: "1.0.0"
+    ruolo: "Scadenze revisioni + assemblee in calendario"
+    crypto_dep: true
+    companion_di: condominio-manutenzioni
+
+caratteristiche_chiave:
+  - "Master password unica per tutte e 3 le ricette"
+  - "Calcolo ritenuta 4% DPR 600/73 art.25-ter automatico"
+  - "Causale bonifico parlante per 4 bonus (Casa/Eco/Sisma/Facciate)"
+  - "CU annuale aggregato per ditta percipiente"
+  - "Scadenziario revisioni obbligatorie (ascensori/antincendio/termica)"
+  - "Anagrafica condomini cifrata via vault-clienti"
+  - "Calendario unificato (revisioni + assemblee)"
+  - "Zero cloud, zero endpoint Gi.Ve (Punto 14)"
+
+gdpr_value_props:
+  - "Tu amministratore = titolare"
+  - "Condominio = contitolare per dati condomini"
+  - "Niente DPA con Gi.Ve"
+  - "Anagrafica condomini cifrata AES-256-GCM"
+
+cosa_NON_fa:
+  - "Non esegue bonifici (produce solo causale precompilata)"
+  - "Non gestisce assemblee/verbali (DanDomus/Domustudio dedicati)"
+  - "Non calcola detrazioni del singolo condomino"
+  - "Non si collega ad AdE"
+  - "Non sostituisce commercialista per 770/CU complessi"

@@ -1,0 +1,51 @@
+{
+  "common": {
+    "yes": "Sì",
+    "no": "No",
+    "ok": "OK",
+    "cancel": "Annulla",
+    "save": "Salva",
+    "delete": "Elimina",
+    "edit": "Modifica",
+    "search": "Cerca",
+    "loading": "Caricamento...",
+    "error": "Errore",
+    "success": "Operazione riuscita",
+    "warning": "Attenzione",
+    "back": "Indietro",
+    "next": "Avanti",
+    "close": "Chiudi"
+  },
+  "auth": {
+    "vault_locked": "Vault bloccato",
+    "vault_unlocked": "Vault sbloccato",
+    "master_password": "Password master",
+    "unlock": "Sblocca",
+    "lock": "Blocca",
+    "recovery_phrase": "Frase di recupero",
+    "tampering_detected": "Manomissione rilevata sul record cifrato"
+  },
+  "recipe": {
+    "farmacia": {
+      "title": "Studio Farmacia",
+      "subtitle": "Clienti, ricette, dispensazioni, DCR, farmacovigilanza",
+      "consenso_dcr_required": "Consenso DCR obbligatorio per consulto"
+    },
+    "rspp": {
+      "title": "Studio RSPP",
+      "subtitle": "D.Lgs 81/2008. Aziende, DVR, formazione, sorveglianza",
+      "formazione_scadenza_60gg": "Formazione in scadenza nei prossimi 60 giorni"
+    },
+    "agricoltura_bio": {
+      "title": "Studio Agricoltura Bio",
+      "subtitle": "Reg UE 2018/848. Particelle, colture, trattamenti, ispezioni",
+      "trattamento_non_conforme": "Trattamento non conforme al regime biologico"
+    }
+  },
+  "ui": {
+    "dashboard": "Cruscotto",
+    "settings": "Impostazioni",
+    "logout": "Esci",
+    "n_results": "{n} risultati trovati"
+  }
+}

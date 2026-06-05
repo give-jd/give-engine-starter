@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Risorse IA — Gi.Ve Engine</title>
+  <meta name="robots" content="noindex" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root { color-scheme: dark; }
+    html, body { background:#0b1020; color:#e2e8f0; font-family: Inter, system-ui, sans-serif; min-height: 100vh; }
+    .font-display { font-family: "Space Grotesk", Inter, sans-serif; letter-spacing: -0.02em; }
+    .aurora { position: fixed; inset:0; pointer-events:none; overflow:hidden; z-index:0; }
+    .aurora::before, .aurora::after {
+      content:''; position:absolute; width:60vmax; height:60vmax; border-radius:50%;
+      filter: blur(120px); opacity:.30; mix-blend-mode:screen;
+    }
+    .aurora::before { background: radial-gradient(circle, #7c3aed 0%, transparent 60%); top:-25vmax; left:-10vmax; }
+    .aurora::after  { background: radial-gradient(circle, #06b6d4 0%, transparent 60%); bottom:-25vmax; right:-10vmax; }
+    details > summary { list-style: none; cursor: pointer; }
+    details > summary::-webkit-details-marker { display: none; }
+    details[open] .faq-arrow { transform: rotate(180deg); }
+    .faq-arrow { transition: transform .2s ease; }
+  </style>
+</head>
+<body class="antialiased">
+  <div class="aurora"></div>
+
+  <header class="relative z-10 max-w-5xl mx-auto px-6 pt-10 pb-6 flex items-center justify-between">
+    <a href="/" class="flex items-center gap-2">
+      <span class="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-400 grid place-items-center text-slate-950 font-black">G</span>
+      <span class="text-lg font-semibold tracking-tight">Gi.Ve <span class="text-cyan-300">Engine</span></span>
+    </a>
+    <a href="/" class="text-sm text-slate-400 hover:text-white">← Torna alla home</a>
+  </header>
+
+  <main class="relative z-10 max-w-5xl mx-auto px-6 pb-20">
+
+    <section class="pt-6 pb-10">
+      <p class="text-xs uppercase tracking-widest text-cyan-300">Trasparenza</p>
+      <h1 class="mt-3 font-display text-4xl md:text-5xl font-bold">Risorse IA</h1>
+      <p class="mt-3 text-slate-300 max-w-2xl">
+        Tutto quello che ti serve sapere — niente fuffa, niente vendite.
+      </p>
+    </section>
+
+    <section class="mt-2 rounded-3xl border border-emerald-400/30 bg-emerald-500/[0.06] p-6 md:p-7">
+      <p class="text-emerald-300 font-display text-xl font-semibold">✅ Gi.Ve Engine funziona già da solo.</p>
+      <p class="mt-2 text-slate-200">
+        I progetti che genera (Spese Casalinghe, Landing Page Premium, Vetrina di
+        Vendita) sono codice reale, funzionante, tuo per sempre. Non serve nessuna
+        subscription per usarli.
+      </p>
+      <p class="mt-5 text-cyan-300 font-display text-lg font-semibold">🤔 Quando ti serve un IDE AI?</p>
+      <p class="mt-2 text-slate-200">
+        Quando vuoi <strong>modificare o estendere</strong> un progetto generato
+        parlando con l'AI invece di scrivere codice tu. Esempio: "aggiungimi una
+        sezione per le spese ricorrenti".
+      </p>
+    </section>
+
+    <section class="mt-10">
+      <div class="flex items-end justify-between flex-wrap gap-3 mb-5">
+        <div>
+          <h2 class="font-display text-2xl font-semibold">Il tuo ambiente attuale</h2>
+          <p class="mt-1 text-sm text-slate-400">Quello che ho rilevato sul tuo computer.</p>
+        </div>
+        <button id="refresh-btn"
+                class="text-sm px-3 py-2 rounded-xl border border-white/10 bg-white/[0.03] hover:border-cyan-400/60 hover:bg-cyan-500/10 transition">
+          🔄 Verifica di nuovo
+        </button>
+      </div>
+      <div class="rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden">
+        <table class="w-full text-sm">
+          <thead class="text-xs text-slate-400 uppercase tracking-wider">
+            <tr><th class="text-left px-5 py-3">Strumento</th>
+                <th class="text-left px-5 py-3">Status</th>
+                <th class="text-left px-5 py-3">Note</th></tr>
+          </thead>
+          <tbody id="env-rows" class="divide-y divide-white/5">
+            <tr><td class="px-5 py-4 text-slate-400" colspan="3">Carico…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p id="env-last" class="mt-2 text-xs text-slate-500"></p>
+    </section>
+
+    <section class="mt-12">
+      <h2 class="font-display text-2xl font-semibold mb-2">I tre percorsi consigliati</h2>
+      <p class="text-sm text-slate-400 mb-6">In ordine di accessibilità. Tutti opzionali.</p>
+
+      <div class="grid gap-5 md:grid-cols-3">
+        <div class="path-card rounded-2xl border border-emerald-400/30 bg-white/[0.03] p-5 flex flex-col">
+          <span class="self-start text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 font-semibold">Consigliato per iniziare</span>
+          <h3 class="mt-3 font-display text-xl font-semibold">Cursor Hobby — Gratis</h3>
+          <p class="mt-2 text-sm text-slate-300">L'IDE AI più diffuso. Il piano gratuito ha limiti generosi per cominciare.</p>
+          <ul class="mt-4 space-y-1 text-sm text-slate-300">
+            <li>✓ Installazione in 1 click</li>
+            <li>✓ Interfaccia simile a VS Code</li>
+            <li>✓ Funziona con i progetti Gi.Ve Engine</li>
+          </ul>
+          <a href="https://cursor.com" target="_blank" rel="noopener" class="mt-auto pt-5 text-cyan-300 hover:text-cyan-200 text-sm font-semibold">Vai su cursor.com →</a>
+        </div>
+
+        <div class="path-card rounded-2xl border border-cyan-400/30 bg-white/[0.03] p-5 flex flex-col">
+          <span class="self-start text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 font-semibold">Migliore qualità AI</span>
+          <h3 class="mt-3 font-display text-xl font-semibold">Claude Code Pro — $20/mese</h3>
+          <p class="mt-2 text-sm text-slate-300">Il CLI ufficiale di Anthropic. Funziona da terminale o integrato con VS Code/Cursor.</p>
+          <ul class="mt-4 space-y-1 text-sm text-slate-300">
+            <li>✓ Modelli Claude più recenti (Opus, Sonnet)</li>
+            <li>✓ Funziona con qualsiasi editor</li>
+            <li>✓ Limiti generosi nel piano Pro</li>
+          </ul>
+          <a href="https://claude.com/code" target="_blank" rel="noopener" class="mt-auto pt-5 text-cyan-300 hover:text-cyan-200 text-sm font-semibold">Vai su claude.com/code →</a>
+        </div>
+
+        <div class="path-card rounded-2xl border border-violet-400/30 bg-white/[0.03] p-5 flex flex-col">
+          <span class="self-start text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-300 border border-violet-400/30 font-semibold">Migliore esperienza</span>
+          <h3 class="mt-3 font-display text-xl font-semibold">Cursor Pro — $20/mese</h3>
+          <p class="mt-2 text-sm text-slate-300">Lo stesso Cursor con limiti molto più alti e funzioni avanzate.</p>
+          <ul class="mt-4 space-y-1 text-sm text-slate-300">
+            <li>✓ Tutti i modelli AI integrati</li>
+            <li>✓ Agenti autonomi</li>
+            <li>✓ Composer multi-file</li>
+          </ul>
+          <a href="https://cursor.com/pricing" target="_blank" rel="noopener" class="mt-auto pt-5 text-cyan-300 hover:text-cyan-200 text-sm font-semibold">Upgrade su cursor.com →</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-14">
+      <h2 class="font-display text-2xl font-semibold mb-5">Domande frequenti</h2>
+      <div class="space-y-3" id="risorse-faq">
+        <details class="group rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <summary class="flex items-center justify-between gap-3">
+            <span class="font-semibold text-white">Sono obbligato a pagare uno di questi per usare Gi.Ve Engine?</span>
+            <span class="faq-arrow text-cyan-300">▾</span>
+          </summary>
+          <p class="mt-3 text-slate-300 text-sm">No. L'Engine genera codice funzionante. Questi servono solo se vuoi modificarlo parlando con un'AI invece che a mano.</p>
+        </details>
+        <details class="group rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <summary class="flex items-center justify-between gap-3">
+            <span class="font-semibold text-white">Posso usarne più di uno?</span>
+            <span class="faq-arrow text-cyan-300">▾</span>
+          </summary>
+          <p class="mt-3 text-slate-300 text-sm">Sì. Molti dei nostri utenti hanno Cursor + Claude Code per i diversi tipi di lavoro.</p>
+        </details>
+        <details class="group rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <summary class="flex items-center justify-between gap-3">
+            <span class="font-semibold text-white">I miei dati passano da Gi.Ve Engine quando uso Cursor o Windsurf?</span>
+            <span class="faq-arrow text-cyan-300">▾</span>
+          </summary>
+          <p class="mt-3 text-slate-300 text-sm">No. Gi.Ve Engine non vede nulla dopo che il progetto è stato generato. Sei completamente nelle mani del tuo IDE AI.</p>
+        </details>
+        <details class="group rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <summary class="flex items-center justify-between gap-3">
+            <span class="font-semibold text-white">Esiste un modo gratuito per usare Claude AI?</span>
+            <span class="faq-arrow text-cyan-300">▾</span>
+          </summary>
+          <p class="mt-3 text-slate-300 text-sm">Sì: Cursor Hobby gratuito include accesso ai modelli AI con limiti. Per uso intensivo i piani a pagamento sono inevitabili.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="mt-12 rounded-3xl border border-violet-400/30 bg-violet-500/[0.04] p-6">
+      <div class="flex items-start gap-4">
+        <div class="text-3xl">🔑</div>
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <h3 class="font-display text-xl font-semibold">BYOK — Bring Your Own Key</h3>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 font-semibold uppercase tracking-wider">Attivo</span>
+          </div>
+          <p class="mt-2 text-slate-300 text-sm">
+            Inserisci la tua chiave API Anthropic: l'Engine la userà per le sue
+            funzioni interne, pagando i centesimi reali invece di una flat fee.
+            La chiave resta <strong>solo sul tuo computer</strong>
+            (<code>~/.givengine/credentials.json</code>, permessi 0600) — nessun
+            server Gi.Ve la riceve mai.
+          </p>
+
+          <p id="byok-state" class="mt-3 text-sm text-slate-400">Stato: —</p>
+
+          <div class="mt-3 flex flex-col sm:flex-row gap-2 sm:items-center">
+            <input id="byok-input" type="password" autocomplete="off" spellcheck="false"
+                   placeholder="sk-ant-…"
+                   class="flex-1 px-4 py-2 rounded-xl bg-slate-900 border border-white/10 focus:border-violet-400 focus:outline-none text-white font-mono text-sm" />
+            <button id="byok-save" class="px-4 py-2 rounded-xl bg-violet-500 hover:bg-violet-400 text-slate-950 font-semibold text-sm transition">Salva</button>
+            <button id="byok-test" class="px-4 py-2 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 text-sm transition">Verifica</button>
+            <button id="byok-remove" class="px-4 py-2 rounded-xl border border-rose-400/30 text-rose-300 hover:bg-rose-500/10 text-sm transition hidden">Rimuovi</button>
+          </div>
+          <p id="byok-feedback" class="mt-2 text-xs hidden"></p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="relative z-10 border-t border-white/5 mt-12">
+    <div class="max-w-5xl mx-auto px-6 py-6 flex flex-col md:flex-row justify-between gap-2 text-xs text-slate-500">
+      <p>© <span id="year"></span> Gi.Ve Group S.R.L. — Trasparenza prima di tutto</p>
+      <p>Cabina di Regia · locale · italiano</p>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    const TOOL_META = {
+      cursor:      { label: 'Cursor IDE',         installUrl: 'https://cursor.com' },
+      windsurf:    { label: 'Windsurf',           installUrl: 'https://codeium.com/windsurf' },
+      claude_code: { label: 'Claude Code CLI',    installUrl: 'https://claude.com/code' },
+      vscode:      { label: 'VS Code',            installUrl: 'https://code.visualstudio.com' },
+    };
+
+    function row(tool, data) {
+      const meta = TOOL_META[tool];
+      const ok = !!data.installed;
+      const statusHtml = ok
+        ? '<span class="text-emerald-300">✓ Installato</span>'
+        : '<span class="text-slate-400">❌ Non installato</span>';
+      const note = ok
+        ? (data.version ? '<span class="text-slate-400 text-xs">v' + data.version.replace(/^v/i,'') + '</span>' : '<span class="text-slate-500 text-xs">—</span>')
+        : '<a href="' + meta.installUrl + '" target="_blank" rel="noopener" class="text-cyan-300 hover:text-cyan-200 text-xs font-semibold">Installa →</a>';
+      return '<tr><td class="px-5 py-3 font-medium text-white">' + meta.label + '</td>' +
+             '<td class="px-5 py-3">' + statusHtml + '</td>' +
+             '<td class="px-5 py-3">' + note + '</td></tr>';
+    }
+
+    function apiRow(data) {
+      const ok = !!data.configured;
+      const status = ok
+        ? '<span class="text-emerald-300">✓ Configurata</span>'
+        : '<span class="text-slate-400">❌ Non configurata</span>';
+      const source = ok
+        ? '<span class="text-slate-400 text-xs">via ' + (data.source || '?') + '</span>'
+        : '<span class="text-slate-500 text-xs">(opzionale, serve solo per BYOK futuro)</span>';
+      return '<tr><td class="px-5 py-3 font-medium text-white">Chiave API Anthropic</td>' +
+             '<td class="px-5 py-3">' + status + '</td>' +
+             '<td class="px-5 py-3">' + source + '</td></tr>';
+    }
+
+    async function render(data) {
+      const rows = ['cursor','windsurf','claude_code','vscode']
+        .map(t => row(t, data[t] || {}))
+        .join('');
+      document.getElementById('env-rows').innerHTML = rows + apiRow(data.anthropic_api_key || {});
+      if (data.last_check_at) {
+        document.getElementById('env-last').textContent = 'Ultimo controllo: ' + data.last_check_at;
+      }
+      syncByokFromEnv(data);
+    }
+
+    async function load() {
+      try {
+        const r = await fetch('/ai-environment/status');
+        const data = await r.json();
+        render(data);
+      } catch (e) {
+        document.getElementById('env-rows').innerHTML =
+          '<tr><td class="px-5 py-3 text-rose-300" colspan="3">Impossibile leggere lo stato. Riprova.</td></tr>';
+      }
+    }
+
+    document.getElementById('refresh-btn').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const orig = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Sto verificando…';
+      try {
+        const r = await fetch('/ai-environment/refresh', { method: 'POST' });
+        const data = await r.json();
+        render(data);
+      } catch {}
+      btn.disabled = false;
+      btn.textContent = orig;
+    });
+
+    // ---- BYOK: salva / verifica / rimuovi la chiave API Anthropic ----
+    async function refreshEnv() {
+      try {
+        const r = await fetch('/ai-environment/refresh', { method: 'POST' });
+        render(await r.json());
+      } catch { load(); }
+    }
+
+    const byokFb = document.getElementById('byok-feedback');
+    function byokMsg(text, kind) {
+      byokFb.className = 'mt-2 text-xs ' + (
+        kind === 'ok' ? 'text-emerald-300' : kind === 'err' ? 'text-rose-300' : 'text-slate-400');
+      byokFb.textContent = text;
+      byokFb.classList.remove('hidden');
+    }
+    function applyByokStatus(status) {
+      const state = document.getElementById('byok-state');
+      const remove = document.getElementById('byok-remove');
+      if (status && status.configured) {
+        state.innerHTML = 'Stato: <span class="text-emerald-300">✓ configurata</span> '
+          + '<span class="text-slate-500 font-mono">' + (status.masked || '') + '</span>';
+        remove.classList.remove('hidden');
+      } else {
+        state.innerHTML = 'Stato: <span class="text-slate-400">non configurata</span>';
+        remove.classList.add('hidden');
+      }
+    }
+
+    document.getElementById('byok-save').addEventListener('click', async () => {
+      const input = document.getElementById('byok-input');
+      const key = input.value.trim();
+      if (!key) { byokMsg('Incolla prima la chiave.', 'err'); return; }
+      try {
+        const r = await fetch('/system/byok', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ api_key: key }),
+        });
+        const data = await r.json();
+        if (r.ok && data.ok) {
+          input.value = '';
+          applyByokStatus(data.status);
+          byokMsg('Chiave salvata in locale. Usa "Verifica" per testarla.', 'ok');
+          refreshEnv();
+        } else {
+          byokMsg(data.detail || 'Salvataggio fallito.', 'err');
+        }
+      } catch {
+        byokMsg('Errore di rete, riprova.', 'err');
+      }
+    });
+
+    document.getElementById('byok-test').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const orig = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Verifico…';
+      byokMsg('Chiamata di prova ad Anthropic…', 'info');
+      try {
+        const r = await fetch('/system/byok/test', { method: 'POST' });
+        const data = await r.json();
+        byokMsg(data.message || (data.ok ? 'OK' : 'Verifica fallita.'), data.ok ? 'ok' : 'err');
+      } catch {
+        byokMsg('Errore di rete, riprova.', 'err');
+      }
+      btn.disabled = false; btn.textContent = orig;
+    });
+
+    document.getElementById('byok-remove').addEventListener('click', async () => {
+      try {
+        const r = await fetch('/system/byok', { method: 'DELETE' });
+        const data = await r.json();
+        applyByokStatus(data.status);
+        byokMsg('Chiave rimossa dal computer.', 'ok');
+        refreshEnv();
+      } catch {
+        byokMsg('Errore di rete, riprova.', 'err');
+      }
+    });
+
+    // Stato iniziale BYOK dal payload ambiente (presenza + fonte).
+    function syncByokFromEnv(data) {
+      const api = (data && data.anthropic_api_key) || {};
+      const state = document.getElementById('byok-state');
+      const remove = document.getElementById('byok-remove');
+      if (api.configured) {
+        state.innerHTML = 'Stato: <span class="text-emerald-300">✓ configurata</span> '
+          + '<span class="text-slate-500 text-xs">via ' + (api.source || '?') + '</span>';
+        if (api.source === 'givengine') remove.classList.remove('hidden');
+      } else {
+        state.innerHTML = 'Stato: <span class="text-slate-400">non configurata</span>';
+        remove.classList.add('hidden');
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>

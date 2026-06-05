@@ -1,0 +1,55 @@
+[
+  {
+    "stato": "avanzamento",
+    "messaggio": "Sto preparando il database sicuro per le tue spese",
+    "percentuale": 15,
+    "tempo_rimasto_sec": 38,
+    "kanji_background": "局DB初期化"
+  },
+  {
+    "stato": "avanzamento",
+    "messaggio": "Sto creando il modulo per inserire nuove spese",
+    "percentuale": 32,
+    "tempo_rimasto_sec": 28,
+    "kanji_background": "入力帳生成"
+  },
+  {
+    "stato": "human_in_loop",
+    "messaggio": "Una domanda veloce: vuoi accedere anche dal telefono di casa?",
+    "opzioni": ["Sì, accesso da telefono", "No, solo dal mio PC"],
+    "id_domanda": "q1"
+  },
+  {
+    "stato": "avanzamento",
+    "messaggio": "Sto disegnando il grafico delle categorie",
+    "percentuale": 55,
+    "tempo_rimasto_sec": 18,
+    "kanji_background": "図種生成"
+  },
+  {
+    "stato": "caveman",
+    "messaggio": "Ho compresso il contesto: risparmiati 2.847 token (≈ €0.04)",
+    "tokens_saved": 2847,
+    "euro_saved": 0.04
+  },
+  {
+    "stato": "avanzamento",
+    "messaggio": "Sto popolando l'app con qualche spesa di esempio",
+    "percentuale": 80,
+    "tempo_rimasto_sec": 8,
+    "kanji_background": "充例資"
+  },
+  {
+    "stato": "avanzamento",
+    "messaggio": "Avvio l'applicazione in locale",
+    "percentuale": 95,
+    "tempo_rimasto_sec": 2,
+    "kanji_background": "局開始"
+  },
+  {
+    "stato": "consegna",
+    "messaggio": "La tua app è viva!",
+    "link": "http://localhost:8501",
+    "tutorial_path": "tutorial.md"
+  }
+]

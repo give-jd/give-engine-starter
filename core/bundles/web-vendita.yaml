@@ -1,0 +1,67 @@
+# Bundle "Web Vendita" - Catalogo €49/mese
+#
+# Aggregato 2 ricette template-injection per chi vende online (e-commerce/SaaS).
+#
+# Tag git per ogni componente:
+# - recipe-vetrina-vendite-completa-v1.0.0 (Q4-2028 NEW)
+# - recipe-landing-saas-premium-v1.0.0 (Q4-2028 NEW)
+#
+# Riferimento knowledge: givegroup-knowledge/give-engine/BUNDLE-WEB-VENDITA.md
+# Riferimento roadmap: givegroup-knowledge/give-engine/ROADMAP-Q4-2028.md (W11)
+
+id: web-vendita
+name: "Web Vendita"
+tier: catalog
+prezzo_mensile_eur: 49
+prezzo_annuale_eur: 490
+sconto_annuale_pct: 17
+created_at: "2026-05-30T00:00:00Z"
+
+descrizione_breve: >
+  Vetrina di vendita (HTML + checkout Lemon Squeezy/Stripe + webhook serverless
+  Vercel + grazie page) + Landing page SaaS premium (subscription + mock_checkout
+  zero-network). 2 ricette template-injection.
+
+target_audience: >
+  Imprenditori/freelance che vogliono vendere online prodotti digitali o
+  subscription SaaS senza dipendere da piattaforme che prendono 5-10% commissione.
+  TAM Italia: ~30k freelance digitali + 5k startup early stage SaaS = ~35k.
+
+componenti:
+  - id: vetrina-vendite-completa
+    versione_min: "1.0.0"
+    ruolo: "Sito vendita Vercel-deploy-ready con checkout overlay (NEW Q4-2028)"
+
+  - id: landing-saas-premium
+    versione_min: "1.0.0"
+    ruolo: "Landing SaaS subscription con pricing module + mock_checkout (NEW Q4-2028)"
+
+caratteristiche_chiave:
+  - "Template-injection architecture: 9-14 domande, costruzione 60 secondi"
+  - "Vercel-deploy-ready (vercel.json + api serverless inclusi)"
+  - "Checkout overlay Lemon Squeezy o Stripe (provider esclusivo per build)"
+  - "Webhook serverless per ordini + email customer"
+  - "Pricing module subscription (mensile/annuale + sconto)"
+  - "Mock checkout + mock email zero-network per dev/test"
+  - "Schema.org JSON-LD per SEO"
+  - "Footer compliance italiano (Punto 22)"
+  - "Templates Jinja2 con select_autoescape XSS-safe"
+  - "Zero cloud, zero endpoint Gi.Ve (Punto 14)"
+
+gdpr_value_props:
+  - "Tu venditore = data controller"
+  - "Clienti gestiti direttamente nel TUO Vercel + provider pagamento"
+  - "Niente DPA con Gi.Ve (lock-in zero)"
+  - "Niente piattaforma intermedia 5-10% commissione"
+
+cosa_NON_fa:
+  - "Non fornisce hosting (resta a Vercel free tier o paid)"
+  - "Non fornisce gateway pagamento (Lemon Squeezy / Stripe contratti separati)"
+  - "Non gestisce inventario fisico / spedizioni"
+  - "Non integra CRM / email marketing (companion vault per anagrafica)"
+  - "Non fornisce SSL / dominio (Vercel automatico)"
+
+compliance_frameworks:
+  - codice-civile-art-2220-conservazione-decennale
+  - gdpr-art-30-registro
+  - dlgs-70-2003-commercio-elettronico

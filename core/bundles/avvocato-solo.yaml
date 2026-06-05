@@ -1,0 +1,67 @@
+# Bundle "Avvocato Solo" - Catalogo €69/mese
+#
+# Aggregato 3 ricette verticali per avvocati solo/praticanti CNF.
+#
+# Tag git per ogni componente:
+# - recipe-atheneo-forense-v1.0.0 (Q2-2027 anticipato)
+# - recipe-vault-clienti-v1.0.0
+# - recipe-agenda-studio-v1.0.0
+#
+# Riferimento knowledge: givegroup-knowledge/give-engine/BUNDLE-AVVOCATO-SOLO.md
+# Riferimento roadmap: givegroup-knowledge/give-engine/ROADMAP-Q2-2027.md (W12)
+
+id: avvocato-solo
+name: "Avvocato Solo"
+tier: catalog
+prezzo_mensile_eur: 69
+prezzo_annuale_eur: 690
+sconto_annuale_pct: 17
+created_at: "2026-05-29T00:00:00Z"
+
+descrizione_breve: >
+  Atheneo Forense (Cassazione civ/pen + codici) + vault clienti cifrato +
+  agenda udienze. 3 ricette verticali, segreto professionale by-design.
+
+target_audience: >
+  Avvocati solo o praticanti iscritti CNF/COA.
+  Mercato addressable italiano: ~245k avvocati.
+
+componenti:
+  - id: atheneo-forense
+    versione_min: "1.0.0"
+    ruolo: "RAG Cassazione civile/penale + codici con citation strict (NEW Q2-2027)"
+    crypto_dep: true
+
+  - id: vault-clienti
+    versione_min: "1.0.0"
+    ruolo: "Anagrafica clienti cifrata (segreto professionale)"
+    crypto_dep: true
+
+  - id: agenda-studio
+    versione_min: "1.0.0"
+    ruolo: "Udienze + scadenze processuali in calendario"
+    crypto_dep: true
+    companion_di: atheneo-forense
+
+caratteristiche_chiave:
+  - "Master password unica per tutte e 3 le ricette"
+  - "AES-256-GCM at-rest tramite core/shared/crypto/ v0.1.0"
+  - "Skill firmate Gi.Ve: codici (C.C./C.P./C.P.C./C.P.P.) + Cassazione civ/pen + SU"
+  - "Citation strict (no citation = rigenerazione automatica)"
+  - "Fascicoli pseudonimizzati + atti caricati cifrati"
+  - "Audit accessi fascicolo (art.622 c.p. tracking)"
+  - "Calendario udienze + scadenze processuali"
+  - "Zero cloud, zero endpoint Gi.Ve (Punto 14)"
+
+gdpr_value_props:
+  - "Tu avvocato = titolare unico (segreto professionale)"
+  - "Cliente = contitolare per fascicolo"
+  - "Niente DPA con Gi.Ve"
+  - "Atti cifrati at-rest art.32 GDPR + art.622 c.p."
+
+cosa_NON_fa:
+  - "Non emette pareri legali"
+  - "Non si collega a Polisweb / Consolle Avvocato"
+  - "Non gestisce udienze automatiche"
+  - "Non sostituisce DeJure / IPSOA / EurFisco"
+  - "Non multi-utente LAN (Atheneo Pro Q3-2027+)"

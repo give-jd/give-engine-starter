@@ -1,0 +1,78 @@
+# Bundle "Cantiere" - Catalogo €69/mese
+#
+# Aggregato 3 ricette per imprese edili / direttori lavori italiani.
+#
+# Tag git per ogni componente:
+# - recipe-diario-cantiere-v1.0.0 (Q3-2028 NEW)
+# - recipe-vault-clienti-v1.0.0
+# - recipe-agenda-studio-v1.0.0
+#
+# Riferimento knowledge: givegroup-knowledge/give-engine/BUNDLE-CANTIERE.md
+# Riferimento roadmap: givegroup-knowledge/give-engine/ROADMAP-Q3-2028.md (W13)
+
+id: cantiere
+name: "Cantiere"
+tier: catalog
+prezzo_mensile_eur: 69
+prezzo_annuale_eur: 690
+sconto_annuale_pct: 17
+created_at: "2026-05-30T00:00:00Z"
+
+descrizione_breve: >
+  Diario cantiere cifrato (giornaliere + presenze DPI + materiali DDT + verbali) +
+  vault committenti + agenda sopralluoghi. 3 ricette per imprese edili e DL.
+
+target_audience: >
+  Imprese edili, direttori lavori, geometri, architetti, ingegneri con
+  cantieri attivi multipli. Mercato addressable italiano:
+  - Imprese edili attive CCIAA: ~130k
+  - Geometri iscritti: ~40k
+  - Architetti / ingegneri studio singolo: ~60k
+  - TAM raggiungibile (con cantieri attivi mid-size): ~80k
+
+componenti:
+  - id: diario-cantiere
+    versione_min: "1.0.0"
+    ruolo: "Cantieri cifrati + giornaliere + presenze + materiali DDT + verbali sopralluogo (NEW Q3-2028)"
+    crypto_dep: true
+
+  - id: vault-clienti
+    versione_min: "1.0.0"
+    ruolo: "Anagrafica committenti cifrata + documenti contrattuali"
+    crypto_dep: true
+
+  - id: agenda-studio
+    versione_min: "1.0.0"
+    ruolo: "Calendario sopralluoghi + scadenze rinnovi POS/PSC"
+    crypto_dep: true
+    companion_di: diario-cantiere
+
+caratteristiche_chiave:
+  - "Master password unica per tutte e 3 le ricette"
+  - "AES-256-GCM at-rest tramite core/shared/crypto/ v0.1.0"
+  - "Giornaliere lavorazioni cifrate (segreto industriale)"
+  - "Presenze lavoratori + DPI indossati per ispezione SPISAL"
+  - "Riepilogo ore per lavoratore (utile cantiere multi-impresa)"
+  - "Materiali consegnati con DDT + foto bolla"
+  - "Verbali sopralluogo con firma acquisita"
+  - "Stato cantiere (aperto/sospeso/chiuso/archiviato)"
+  - "Dashboard importo lavori in essere + giornaliere settimanali"
+  - "Zero cloud, zero endpoint Gi.Ve (Punto 14)"
+
+gdpr_value_props:
+  - "Tu impresa = data controller unico"
+  - "Niente DPA con Gi.Ve"
+  - "Dati committenti cifrati art.32 GDPR"
+  - "Lavoratori art.6 GDPR (esecuzione contratto)"
+
+cosa_NON_fa:
+  - "Non sostituisce POS / PSC / DUVRI (resta del CSE/CSP)"
+  - "Non si collega a sportello unico edilizia comunale"
+  - "Non emette SAL / fatture (companion archivio-fe-sdi)"
+  - "Non gestisce contabilità impresa (companion forfettario-watcher)"
+  - "Non multi-utente LAN (Atheneo Pro processo dev dedicato separato, Punto 25)"
+
+compliance_frameworks:
+  - d-lgs-81-2008-sicurezza-cantieri
+  - d-p-r-380-2001-testo-unico-edilizia
+  - codice-civile-art-2220

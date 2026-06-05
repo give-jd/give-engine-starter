@@ -1,0 +1,40 @@
+id: studio-veterinario-bundle
+name: "Studio Veterinario"
+tier: catalog
+prezzo_mensile_eur: 69
+prezzo_annuale_eur: 690
+sconto_annuale_pct: 17
+created_at: "2026-05-30T00:00:00Z"
+
+descrizione_breve: >
+  Cartella veterinaria cifrata (proprietari + animali + visite + vaccini +
+  farmacovigilanza ENPAV) + vault clienti + agenda visite. 3 ricette per
+  medici veterinari FNOVI.
+
+target_audience: >
+  Medici veterinari iscritti FNOVI. Mercato addressable: ~35k veterinari
+  iscritti FNOVI Italia (45% liberi professionisti).
+
+componenti:
+  - id: studio-veterinario
+    versione_min: "1.0.0"
+    ruolo: "Cartella veterinaria + farmacovigilanza ENPAV (NEW Q1-2029)"
+    crypto_dep: true
+  - id: vault-clienti
+    versione_min: "1.0.0"
+    ruolo: "Anagrafica proprietari cifrata"
+    crypto_dep: true
+  - id: agenda-studio
+    versione_min: "1.0.0"
+    ruolo: "Appuntamenti visite + richiami vaccini"
+    crypto_dep: true
+    companion_di: studio-veterinario
+
+caratteristiche_chiave:
+  - "14 specie supportate (cane/gatto/cavallo/bovino/...)"
+  - "Microchip + passaporto + anagrafe zootecnica"
+  - "Prescrizioni farmaci AIC veterinario + ATC vet + tempi attesa carne/latte"
+  - "Vaccinazioni con richiami auto-calcolati"
+  - "Farmacovigilanza ENPAV con protocollo segnalazione AIFA"
+  - "Master password unica + AES-256-GCM"
+  - "Zero cloud (Punto 14)"

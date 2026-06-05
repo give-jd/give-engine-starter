@@ -1,0 +1,95 @@
+# Bundle "P.IVA Completa" - Catalogo €79/mese
+#
+# Aggregato 7 ricette per P.IVA con cassa RT + scelta regime.
+# Estende "Studio Solo Plus" con corrispettivi + regime-fiscale-advisor.
+#
+# Tag git per ogni componente:
+# - recipe-vault-clienti-v1.0.0
+# - recipe-agenda-studio-v1.0.0
+# - recipe-atheneo-light-v0.3.0
+# - recipe-archivio-fe-sdi-v1.0.1
+# - recipe-forfettario-watcher-v1.0.1
+# - recipe-corrispettivi-telematici-v1.0.0 (Q1-2027 anticipato)
+# - recipe-regime-fiscale-advisor-v1.0.0 (Q1-2027 anticipato)
+#
+# Riferimento knowledge: givegroup-knowledge/give-engine/BUNDLE-PIVA-COMPLETA.md
+# Riferimento roadmap: givegroup-knowledge/give-engine/ROADMAP-Q1-2027.md (W13)
+
+id: p-iva-completa
+name: "P.IVA Completa"
+tier: catalog
+prezzo_mensile_eur: 79
+prezzo_annuale_eur: 790
+sconto_annuale_pct: 17
+created_at: "2026-05-29T00:00:00Z"
+estensione_di: studio-solo-plus
+
+descrizione_breve: >
+  P.IVA completa: clienti + agenda + ricerca semantica + archivio FE
+  + soglia 85k + cassa RT + decisione regime. 7 ricette, 1 master password.
+
+target_audience: >
+  P.IVA con cassa RT (commercianti / artigiani / esercenti) e/o
+  professionisti che valutano cambio regime (forfettario -> ordinario -> SRL).
+
+componenti:
+  - id: vault-clienti
+    versione_min: "1.0.0"
+    ruolo: "Anagrafica clienti cifrata"
+    crypto_dep: true
+
+  - id: agenda-studio
+    versione_min: "1.0.0"
+    ruolo: "Calendario + scadenze"
+    crypto_dep: true
+
+  - id: atheneo-light
+    versione_min: "0.3.0"
+    ruolo: "Ricerca semantica + AI opt-in"
+    crypto_dep: false
+
+  - id: archivio-fe-sdi
+    versione_min: "1.0.1"
+    ruolo: "Archivio FE B2B + RAG + LIPE + conservazione SHA-256"
+    crypto_dep: true
+
+  - id: forfettario-watcher
+    versione_min: "1.0.1"
+    ruolo: "Soglia 85k + imposta + Quadro LM"
+    crypto_dep: false
+
+  - id: corrispettivi-telematici
+    versione_min: "1.0.0"
+    ruolo: "Chiusura RT giornaliera + LIPE trimestrale + cross-check FE"
+    crypto_dep: false
+
+  - id: regime-fiscale-advisor
+    versione_min: "1.0.0"
+    ruolo: "Comparator 5 regimi + risk flag art.10-bis"
+    crypto_dep: false
+
+caratteristiche_chiave:
+  - "Master password unica per tutte e 7 le ricette"
+  - "AES-256-GCM at-rest tramite core/shared/crypto/ v0.1.0"
+  - "RAG semantico fatture + documenti (multilingual-e5-base IT)"
+  - "Cassa RT giornaliera + LIPE trimestrale + cross-check archivio FE"
+  - "Decisione regime (forfettario/semplificata/ordinaria/SRL/SRLs) confrontata"
+  - "Export commercialista pronti (Quadro LM + CSV LIPE + comparator + CU)"
+  - "Zero cloud, zero endpoint Gi.Ve (Punto 14)"
+
+gdpr_value_props:
+  - "Titolare unico tu"
+  - "Niente DPA con Gi.Ve"
+  - "Mai credenziali Entratel/Fisconline/INPS"
+
+cosa_NON_fa:
+  - "Non emette fatture (companion software AdE)"
+  - "Non si collega ad AdE/SDI/PEC"
+  - "Non sostituisce commercialista"
+  - "Non multi-utente LAN (Atheneo Pro separato)"
+
+upgrade_path:
+  da: studio-solo-plus
+  delta_prezzo_mensile_eur: 10
+  delta_ricette: 2
+  motivazione: "Cassa RT + decisione regime ottimale per crescita P.IVA"

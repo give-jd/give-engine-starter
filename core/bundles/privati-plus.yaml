@@ -1,0 +1,74 @@
+# Bundle "Privati Plus" - Catalogo €39/mese
+#
+# Aggregato 4 ricette MIT/proprietary per persone fisiche italiane (gestione domestica).
+#
+# Tag git per ogni componente:
+# - recipe-scadenze-auto-casa-v1.0.0 (Q3-2028 NEW)
+# - recipe-osservaprezzi-carburanti-v1.0.0 (Q3-2028 NEW)
+# - recipe-letture-contatori-v1.0.0
+# - recipe-bollette-watcher-v1.0.0
+#
+# Riferimento knowledge: givegroup-knowledge/give-engine/BUNDLE-PRIVATI-PLUS.md
+# Riferimento roadmap: givegroup-knowledge/give-engine/ROADMAP-Q3-2028.md (W12)
+
+id: privati-plus
+name: "Privati Plus"
+tier: catalog
+prezzo_mensile_eur: 39
+prezzo_annuale_eur: 390
+sconto_annuale_pct: 17
+created_at: "2026-05-30T00:00:00Z"
+
+descrizione_breve: >
+  Scadenze auto/casa + osservaprezzi carburanti + letture contatori + bollette.
+  4 ricette per famiglia italiana che vuole tracciare spese e scadenze
+  senza app cloud.
+
+target_audience: >
+  Persone fisiche italiane (famiglia con auto + casa di proprietà o affitto).
+  Sweet spot: 1-2 auto + 1-2 case (anche in affitto) + utenze gas/luce/acqua.
+  TAM Italia: ~25 milioni famiglie con almeno auto + casa. Penetrazione
+  realistica 0.001% = 250 famiglie = EUR 117k ARR.
+
+componenti:
+  - id: scadenze-auto-casa
+    versione_min: "1.0.0"
+    ruolo: "Bollo + revisione + assicurazione + caldaia + IMU + scadenze persona (NEW Q3-2028)"
+
+  - id: osservaprezzi-carburanti
+    versione_min: "1.0.0"
+    ruolo: "Distributori vicini + alert prezzo + diario rifornimenti + consumo L/100km (NEW Q3-2028)"
+
+  - id: letture-contatori
+    versione_min: "1.0.0"
+    ruolo: "Auto-letture gas/luce/acqua + finestre fornitore + consumo periodo"
+
+  - id: bollette-watcher
+    versione_min: "1.0.0"
+    ruolo: "Monitoring bollette + alert anomalie consumi + grafici annuali"
+    crypto_dep: true
+
+caratteristiche_chiave:
+  - "Scadenze ricorrenti auto-rinnovo (annuale/semestrale/mensile/custom)"
+  - "Pagamenti storici + tracking importi pagati vs preventivati"
+  - "Prezzi carburanti aggiornati MIMIT (download manuale CSV)"
+  - "Alert preferito sotto soglia prezzo"
+  - "Calcolo consumo medio L/100km personale"
+  - "Letture contatori con fasce orarie F1/F2/F3 luce"
+  - "Bollette importate + analisi consumi anno-su-anno"
+  - "Zero cloud, zero endpoint Gi.Ve (Punto 14)"
+
+gdpr_value_props:
+  - "Tu utente = data controller unico"
+  - "Niente DPA con Gi.Ve"
+  - "Dati domestici mai su cloud Gi.Ve"
+  - "Spese personali cifrate at-rest (bollette)"
+
+cosa_NON_fa:
+  - "Non paga automaticamente bollette / scadenze"
+  - "Non si collega a portale Agenzia delle Entrate (resta tuo)"
+  - "Non importa direttamente da AddictiOne / MIMIT API (CSV manuale)"
+  - "Non gestisce mutui / investimenti / borsa"
+
+compliance_frameworks:
+  - codice-civile-art-2220-conservazione-decennale

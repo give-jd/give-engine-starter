@@ -1,0 +1,63 @@
+id: bollette-watcher
+tier: starter
+license: MIT
+versione: "1.2.0"
+created_at: "2026-05-24T00:00:00Z"
+updated_at: "2026-06-05T00:00:00Z"
+novita_changelog: "v1.2.0 — nuovo parser AGN Energia (GPL/gas) + estrazione letture contatore assolute dal DETTAGLIO LETTURE (per l'integrazione con Letture Contatori). v1.1.0 — provider adapters Hera Comm + Acea Energia (luce/gas/acqua N-E + Roma-Lazio). Totale 12 parser providers (Q4-2028 LIVE, 173 test, cov 90%). v1.0.0 — Enel/Eni/Edison/A2A/Iren/Vodafone/TIM/Fastweb + alerts + exports + parsers OCR + commercialista CSV."
+nome_visualizzato: "Bollette Watcher"
+descrizione_breve: "Importa PDF di luce, gas, telefono, internet → consumi e costi in dashboard locale"
+descrizione_estesa: >
+  Carichi i PDF delle bollette, l'app legge consumi e importi, ti mostra
+  trend mensili e ti avvisa di anomalie. Tutto sul tuo PC: niente cloud,
+  niente account, niente terze parti. Esporta in CSV per la dichiarazione
+  dei redditi se detrai utenze pro-quota.
+category: personal-finance
+icon: bolt
+tags:
+  - bollette
+  - consumi
+  - italia
+  - local-first
+tempo_stimato_costruzione_secondi: 60
+moduli_attivati:
+  - parser_pdf_bollette
+  - database_locale_sqlite
+  - dashboard_trend
+  - alert_anomalie_consumi
+  - export_csv_deducibili
+
+# Nuovi campi compliance (PR scaffold 2026-05-24)
+data_persistence: sqlite-local
+personal_data: true
+personal_data_categories:
+  - consumi-energetici
+  - dati-fatturazione-utenze
+external_calls: false
+
+prerequisiti_hardware:
+  ram_minima_gb: 4
+  python_minimo: "3.10"
+  spazio_disco_mb: 120
+
+domande_human_in_loop:
+  - id: q1
+    domanda_italiano: "Quali fornitori vuoi tracciare di default?"
+    opzioni:
+      - "Solo luce e gas"
+      - "Tutti (luce, gas, telefono, internet)"
+      - "Personalizzato dopo il setup"
+    impatto_tecnico: "abilita parser preinstallati"
+    default: "Tutti (luce, gas, telefono, internet)"
+  - id: q2
+    domanda_italiano: "Quale soglia per l'alert anomalia consumi?"
+    opzioni:
+      - "±15% vs media"
+      - "±25% vs media (raccomandato)"
+      - "±40% vs media"
+    impatto_tecnico: "alert sensibilità"
+    default: "±25% vs media (raccomandato)"
+
+porta_locale: 8511
+output_dir_default: "~/GiveEngine_apps/bollette-watcher"
+streamlit_entrypoint: "app.py"

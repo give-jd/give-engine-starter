@@ -1,0 +1,78 @@
+# Bundle "Immobiliare" - Catalogo €69/mese
+#
+# Aggregato 3 ricette per proprietari immobiliari con mix locazioni residenziali + affitti brevi.
+#
+# Tag git per ogni componente:
+# - recipe-locazioni-residenziali-v1.0.0 (Q2-2028 NEW)
+# - recipe-affitti-brevi-italia-v1.0.0 (Q2-2028 NEW)
+# - recipe-vault-clienti-v1.0.0
+#
+# Riferimento knowledge: givegroup-knowledge/give-engine/BUNDLE-IMMOBILIARE.md
+# Riferimento roadmap: givegroup-knowledge/give-engine/ROADMAP-Q2-2028.md (W13)
+
+id: immobiliare
+name: "Immobiliare"
+tier: catalog
+prezzo_mensile_eur: 69
+prezzo_annuale_eur: 690
+sconto_annuale_pct: 17
+created_at: "2026-05-30T00:00:00Z"
+
+descrizione_breve: >
+  Locazioni residenziali (contratti + canoni + certificazioni + scadenze) +
+  affitti brevi (Alloggiati Web + ISTAT + imposta soggiorno + CIN) + vault
+  inquilini cifrato. 3 ricette per proprietari mid-size.
+
+target_audience: >
+  Proprietari immobiliari italiani con portfolio 2-20 unità che gestiscono
+  in proprio (no agenzia). Mix locazioni 4+4 / 3+2 / studenti / transitori /
+  affitti brevi turistici. Mercato addressable: ~250k proprietari italiani
+  con multi-unità non gestiti da agenzia (stima ISTAT proprietari immobili).
+
+componenti:
+  - id: locazioni-residenziali
+    versione_min: "1.0.0"
+    ruolo: "Archivio immobili + contratti + canoni + certificazioni + scadenze (NEW Q2-2028)"
+    crypto_dep: true
+
+  - id: affitti-brevi-italia
+    versione_min: "1.0.0"
+    ruolo: "Alloggiati Web + ISTAT Lombardia + imposta soggiorno + CIN (NEW Q2-2028)"
+    crypto_dep: true
+
+  - id: vault-clienti
+    versione_min: "1.0.0"
+    ruolo: "Anagrafica inquilini/ospiti cifrata + documenti"
+    crypto_dep: true
+
+caratteristiche_chiave:
+  - "Master password unica per tutte e 3 le ricette"
+  - "AES-256-GCM at-rest tramite core/shared/crypto/ v0.1.0"
+  - "Contratti 4+4 / 3+2 / studenti / transitori con cedolare secca tracking"
+  - "Calcolo canoni con adeguamento ISTAT FOI"
+  - "Scadenze certificazioni (APE, caldaia, elettrico)"
+  - "Alloggiati Web (Polizia di Stato) per affitti brevi"
+  - "ISTAT regionale (Lombardia v1.0, altre 4 regioni v1.1)"
+  - "Imposta soggiorno multi-comune"
+  - "CIN tracking (Codice Identificativo Nazionale L.118/2024)"
+  - "Zero cloud, zero endpoint Gi.Ve (Punto 14)"
+
+gdpr_value_props:
+  - "Tu proprietario = titolare unico"
+  - "Niente DPA con Gi.Ve"
+  - "Inquilini/ospiti cifrati at-rest art.32 GDPR"
+  - "Dati polizia (Alloggiati Web) inviati direttamente da te"
+
+cosa_NON_fa:
+  - "Non invia automaticamente Alloggiati Web (genera file da caricare tu)"
+  - "Non versa imposta soggiorno al Comune"
+  - "Non gestisce piattaforme tipo AirBnb / Booking (export manuale)"
+  - "Non emette dichiarazione redditi (resta tuo commercialista)"
+  - "Non multi-utente LAN (Atheneo Pro processo dev dedicato Punto 25)"
+
+compliance_frameworks:
+  - legge-431-1998-locazioni-residenziali
+  - tulps-art-109-alloggiati
+  - d-lgs-23-2011-cedolare-secca
+  - l-118-2024-cin-affitti-brevi
+  - gdpr-art-30-registro

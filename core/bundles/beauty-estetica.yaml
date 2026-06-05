@@ -1,0 +1,79 @@
+# Bundle "Beauty Estetica" - Catalogo €49/mese
+#
+# Aggregato 3 ricette per estetiste / parrucchieri / makeup artist con studio singolo.
+#
+# Tag git per ogni componente:
+# - recipe-schede-trattamenti-estetica-v1.0.0 (Q2-2028 NEW)
+# - recipe-vault-clienti-v1.0.0
+# - recipe-agenda-studio-v1.0.0
+#
+# Riferimento knowledge: givegroup-knowledge/give-engine/BUNDLE-BEAUTY-ESTETICA.md
+# Riferimento roadmap: givegroup-knowledge/give-engine/ROADMAP-Q2-2028.md (W13)
+
+id: beauty-estetica
+name: "Beauty Estetica"
+tier: catalog
+prezzo_mensile_eur: 49
+prezzo_annuale_eur: 490
+sconto_annuale_pct: 17
+created_at: "2026-05-30T00:00:00Z"
+
+descrizione_breve: >
+  Schede trattamenti cifrate + foto prima/dopo senza EXIF + consensi firmati con hash +
+  agenda appuntamenti + vault clienti. 3 ricette per beauty professionals.
+
+target_audience: >
+  Estetiste, parrucchieri, makeup artist, tatuatori, centri estetici con
+  titolare unico o piccolo team. Mercato addressable italiano:
+  - Estetiste registrate CCIAA: ~85k
+  - Parrucchieri: ~95k
+  - Makeup artist / nail / tattoo: ~25k
+  - TAM totale: ~205k beauty professionals
+
+componenti:
+  - id: schede-trattamenti-estetica
+    versione_min: "1.0.0"
+    ruolo: "Schede cifrate allergie + gravidanza + farmaci + foto pre/post + consensi firmati (NEW Q2-2028)"
+    crypto_dep: true
+
+  - id: vault-clienti
+    versione_min: "1.0.0"
+    ruolo: "Anagrafica clienti cifrata + storico spese"
+    crypto_dep: true
+
+  - id: agenda-studio
+    versione_min: "1.0.0"
+    ruolo: "Appuntamenti + reminder + scadenze rinnovi"
+    crypto_dep: true
+    companion_di: schede-trattamenti-estetica
+
+caratteristiche_chiave:
+  - "Master password unica"
+  - "AES-256-GCM at-rest tramite core/shared/crypto/ v0.1.0"
+  - "Anamnesi cliente cifrata (allergie, gravidanza, farmaci, patologie)"
+  - "Foto pre/post trattamento con EXIF strip automatico (GPS rimosso)"
+  - "Foto cifrate on-disk (chiave master)"
+  - "Resize automatico foto a 1920px lato lungo (privacy + performance)"
+  - "Consensi firmati con hash documento SHA-256 (integrità no manomissione)"
+  - "Template consensi laser/peeling/permanenti customizzabili"
+  - "Storico trattamenti per cliente con prodotti/ml/risultato"
+  - "Zero cloud, zero endpoint Gi.Ve (Punto 14)"
+
+gdpr_value_props:
+  - "Tu titolare = data controller unico"
+  - "Niente DPA con Gi.Ve"
+  - "Dati anamnesi art.9 GDPR cifrati at-rest"
+  - "Foto trattamento mai inviate al cloud (mai indicizzate)"
+  - "Consensi con hash crittografico (audit trail)"
+
+cosa_NON_fa:
+  - "Non emette fattura elettronica (companion archivio-fe-sdi se forfettario)"
+  - "Non gestisce magazzino/inventario prodotti"
+  - "Non integra registratore di cassa"
+  - "Non vende corsi / abbonamenti clienti (no marketplace)"
+  - "Non multi-utente LAN (Atheneo Pro processo dev dedicato Punto 25)"
+
+compliance_frameworks:
+  - gdpr-art-9-dati-sanitari-anamnesi
+  - gdpr-art-30-registro
+  - codice-deontologico-estetiste

@@ -1,0 +1,51 @@
+{
+  "common": {
+    "yes": "Sí",
+    "no": "No",
+    "ok": "OK",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "search": "Buscar",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Operación exitosa",
+    "warning": "Atención",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "close": "Cerrar"
+  },
+  "auth": {
+    "vault_locked": "Bóveda bloqueada",
+    "vault_unlocked": "Bóveda desbloqueada",
+    "master_password": "Contraseña maestra",
+    "unlock": "Desbloquear",
+    "lock": "Bloquear",
+    "recovery_phrase": "Frase de recuperación",
+    "tampering_detected": "Manipulación detectada en registro cifrado"
+  },
+  "recipe": {
+    "farmacia": {
+      "title": "Estudio Farmacia",
+      "subtitle": "Clientes, recetas, dispensaciones, DCR, farmacovigilancia",
+      "consenso_dcr_required": "Consentimiento DCR obligatorio para consulta"
+    },
+    "rspp": {
+      "title": "Estudio RSPP (Seguridad Laboral)",
+      "subtitle": "D.Lgs 81/2008. Empresas, DVR, formación, vigilancia sanitaria",
+      "formazione_scadenza_60gg": "Formación que vence en los próximos 60 días"
+    },
+    "agricoltura_bio": {
+      "title": "Estudio Agricultura Bio",
+      "subtitle": "Reg UE 2018/848. Parcelas, cultivos, tratamientos, inspecciones",
+      "trattamento_non_conforme": "Tratamiento no conforme al régimen biológico"
+    }
+  },
+  "ui": {
+    "dashboard": "Tablero",
+    "settings": "Configuración",
+    "logout": "Cerrar sesión",
+    "n_results": "{n} resultados encontrados"
+  }
+}

@@ -1,0 +1,78 @@
+# Bundle "Studio Ristorazione" - Catalogo €49/mese
+#
+# Aggregato 3 ricette verticali per bar/ristoranti/gelaterie/panifici.
+# Ottimizzato per uso tablet in cucina via LAN.
+#
+# Tag git per ogni componente:
+# - recipe-haccp-registrazioni-v1.0.0 (Q4-2027 NEW)
+# - recipe-bollette-watcher-v1.0.0
+# - recipe-vault-clienti-v1.0.0
+#
+# Riferimento knowledge: givegroup-knowledge/give-engine/BUNDLE-STUDIO-RISTORAZIONE.md
+# Riferimento roadmap: givegroup-knowledge/give-engine/ROADMAP-Q4-2027.md (W12)
+
+id: studio-ristorazione
+name: "Studio Ristorazione"
+tier: catalog
+prezzo_mensile_eur: 49
+prezzo_annuale_eur: 490
+sconto_annuale_pct: 17
+created_at: "2026-05-30T00:00:00Z"
+
+descrizione_breve: >
+  Schede HACCP autocontrollo (temperature/pulizie/ricevimenti/non conformità) +
+  bollette monitoring (utenze bar/cucina) + vault fornitori cifrato.
+  3 ricette verticali per esercenti, niente cloud, niente abbonamenti SaaS.
+
+target_audience: >
+  Bar, ristoranti, gelaterie, panifici, food trucks con singolo locale o
+  micro-catena (≤3 punti). Mercato addressable italiano: ~155k esercizi
+  pubblici (bar + ristoranti + pasticcerie/gelaterie) registrati ATECO.
+  Sweet spot: esercente che ha bisogno di passare le ispezioni ASL senza
+  pagare €30-50/mese a software HACCP cloud.
+
+componenti:
+  - id: haccp-registrazioni
+    versione_min: "1.0.0"
+    ruolo: "Schede temperature + pulizie + ricevimenti + non conformità + manutenzioni + operatori (NEW Q4-2027)"
+    mobile_ux: primary
+
+  - id: bollette-watcher
+    versione_min: "1.0.0"
+    ruolo: "Monitoring utenze gas/elettrico/acqua (cucina/cella frigo)"
+    crypto_dep: true
+
+  - id: vault-clienti
+    versione_min: "1.0.0"
+    ruolo: "Anagrafica fornitori cifrata + contratti"
+    crypto_dep: true
+
+caratteristiche_chiave:
+  - "Mobile-first UI per uso tablet in cucina via LAN"
+  - "Schede temperature frigo/freezer/abbattitore (compliance Reg.CE 852/2004)"
+  - "Schede pulizie/sanificazioni (HACCP)"
+  - "Tracking ricevimenti merci + temperatura consegna + DDT"
+  - "Non conformità con azione correttiva + chiusura"
+  - "Manutenzioni attrezzature (cappa, sonde, gas)"
+  - "Operatori + attestati formazione + scadenze rinnovo"
+  - "PDF report pronto ispezione ASL"
+  - "Bollette monitoring per individuare consumi anomali (frigo guasto)"
+  - "Zero cloud, zero endpoint Gi.Ve (Punto 14)"
+
+gdpr_value_props:
+  - "Tu titolare = data controller unico (operatori = dipendenti)"
+  - "Niente DPA con software HACCP cloud"
+  - "Dati operatori art.6 GDPR (esecuzione contratto)"
+
+cosa_NON_fa:
+  - "Non sostituisce il manuale HACCP (resta del consulente)"
+  - "Non emette autocertificazioni ASL"
+  - "Non integra registratore di cassa / corrispettivi"
+  - "Non gestisce magazzino/inventario"
+  - "Non gestisce ordini fornitori"
+  - "Non multi-utente LAN avanzato (Atheneo Pro processo separato Punto 25)"
+
+compliance_frameworks:
+  - reg-ce-852-2004-haccp
+  - dlgs-193-2007-sanzioni
+  - dlgs-81-2008-sicurezza-lavoro

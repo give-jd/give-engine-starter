@@ -1,0 +1,103 @@
+# Bundle "Studio Solo Plus" — Catalogo €69/mese
+#
+# Aggregato 5 ricette per P.IVA solo (forfettario o ordinaria piccola).
+# Estende "Studio Solo" con archivio FE B2B + monitoraggio soglia 85k.
+#
+# Tag git per ogni componente:
+# - recipe-vault-clienti-v1.0.0
+# - recipe-agenda-studio-v1.0.0
+# - recipe-atheneo-light-v0.3.0 (LIVE Q2 2026)
+# - recipe-archivio-fe-sdi-v1.0.0 (LIVE Q4 2026)
+# - recipe-forfettario-watcher-v1.0.0 (LIVE Q4 2026)
+#
+# Riferimento knowledge: givegroup-knowledge/give-engine/BUNDLE-STUDIO-SOLO-PLUS.md
+# Riferimento roadmap: givegroup-knowledge/give-engine/ROADMAP-Q4-2026.md (W49)
+
+id: studio-solo-plus
+name: "Studio Solo Plus"
+tier: catalog
+prezzo_mensile_eur: 69
+prezzo_annuale_eur: 690
+sconto_annuale_pct: 17
+created_at: "2026-05-29T00:00:00Z"
+estensione_di: studio-solo
+
+descrizione_breve: >
+  Vault clienti, agenda, ricerca semantica, archivio FE B2B e
+  monitoraggio soglia 85k forfettario: P.IVA solo sotto controllo,
+  1 master password, niente cloud.
+
+target_audience: >
+  Liberi professionisti forfettari (avvocato/commercialista/notaio/
+  tecnico/consulente) sopra 50k EUR ricavi annui e P.IVA ordinarie
+  micro (1 professionista + max 3 collaboratori).
+
+componenti:
+  - id: vault-clienti
+    versione_min: "1.0.0"
+    ruolo: "Anagrafica clienti cifrata + documenti + audit log"
+    crypto_dep: true
+
+  - id: agenda-studio
+    versione_min: "1.0.0"
+    ruolo: "Appuntamenti + scadenze + reminder + iCal export"
+    crypto_dep: true
+    companion_di: vault-clienti
+
+  - id: atheneo-light
+    versione_min: "0.3.0"
+    ruolo: "Ricerca semantica documenti + sintesi AI opt-in"
+    crypto_dep: false
+
+  - id: archivio-fe-sdi
+    versione_min: "1.0.0"
+    ruolo: "Archivio FE B2B + RAG + LIPE cross-check + conservazione SHA-256"
+    crypto_dep: true
+
+  - id: forfettario-watcher
+    versione_min: "1.0.0"
+    ruolo: "Soglia 85k monitor + imposta sostitutiva + INPS + Quadro LM"
+    crypto_dep: false
+    companion_di: archivio-fe-sdi
+
+caratteristiche_chiave:
+  - "Master password unica per tutte e 5 le ricette"
+  - "AES-256-GCM at-rest tramite core/shared/crypto/ v0.1.0"
+  - "Ricerca semantica documenti + fatture FE (RAG e5-base IT)"
+  - "Cross-check LIPE per coerenza IVA trimestrale"
+  - "Monitoraggio cumulativo soglia 85k EUR con alert 70/85/95%"
+  - "Calcolo imposta sostitutiva 5%/15% + INPS"
+  - "Export Quadro LM commercialista (CSV UTF-8 BOM)"
+  - "Export ZIP archivio FE per consulenza (XML + indice + manifest)"
+  - "Audit log immutabile accessi"
+  - "Zero cloud, zero endpoint Gi.Ve (Punto 14)"
+  - "Italiano puro (Punto 18)"
+
+gdpr_value_props:
+  - "Tu professionista = titolare unico"
+  - "Niente DPA con Gi.Ve"
+  - "Mai credenziali Entratel/Fisconline richieste"
+  - "Cifratura at-rest art. 32 GDPR"
+  - "Anagrafica clienti fatturati cifrata"
+  - "Right-to-erasure cliente con audit 10 anni"
+
+cosa_NON_fa:
+  - "Non emette fatture (companion software AdE gratuito o terzo)"
+  - "Non sostituisce commercialista/avvocato"
+  - "Non si collega a PEC/Polisweb/AdE/Consolle"
+  - "Non multi-utente LAN (Atheneo Pro Q1-2027+ separato)"
+  - "Non conserva legalmente a norma art. 44 CAD (richiede conservatore AgID accreditato)"
+
+upgrade_path:
+  da: studio-solo
+  delta_prezzo_mensile_eur: 20
+  delta_ricette: 2
+  motivazione: "P.IVA con fatturazione B2B + monitoraggio fiscale forfettario"
+
+evoluzione_futura:
+  q1_2027:
+    bundle: "P.IVA Completa"
+    prezzo_mensile_eur: 79
+    nuove_ricette:
+      - corrispettivi-telematici
+      - regime-fiscale-advisor

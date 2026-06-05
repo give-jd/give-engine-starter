@@ -1,0 +1,82 @@
+# Bundle "Avvocato Pro" - Catalogo €99/mese
+#
+# Aggregato 4 ricette verticali per avvocati con gestione fascicoli completa.
+# Upgrade premium da "Avvocato Solo" (+ studio-legale-fascicoli).
+#
+# Tag git per ogni componente:
+# - recipe-atheneo-forense-v1.0.0 (Q2-2027)
+# - recipe-studio-legale-fascicoli-v1.0.0 (Q4-2027 NEW)
+# - recipe-vault-clienti-v1.0.0
+# - recipe-agenda-studio-v1.0.0
+#
+# Riferimento knowledge: givegroup-knowledge/give-engine/BUNDLE-AVVOCATO-PRO.md
+# Riferimento roadmap: givegroup-knowledge/give-engine/ROADMAP-Q4-2027.md (W11)
+
+id: avvocato-pro
+name: "Avvocato Pro"
+tier: catalog
+prezzo_mensile_eur: 99
+prezzo_annuale_eur: 990
+sconto_annuale_pct: 17
+created_at: "2026-05-30T00:00:00Z"
+
+descrizione_breve: >
+  Avvocato Solo + studio-legale-fascicoli completo (fascicoli, scadenze processuali,
+  parcellatore DM 55/2014 + DM 147/2022, calendario udienze, atti cifrati).
+  4 ricette verticali, gestione studio end-to-end senza cloud.
+
+target_audience: >
+  Avvocati civilisti/penalisti/amministrativisti con pratica strutturata
+  (>20 fascicoli attivi). Upgrade naturale da Avvocato Solo quando il volume
+  rende il vault da solo insufficiente. Mercato addressable: ~80k avvocati
+  attivi con studio strutturato.
+
+componenti:
+  - id: atheneo-forense
+    versione_min: "1.0.0"
+    ruolo: "RAG Cassazione civile/penale + codici con citation strict"
+    crypto_dep: true
+
+  - id: studio-legale-fascicoli
+    versione_min: "1.0.0"
+    ruolo: "Fascicoli + scadenze processuali + parcellatore DM Giustizia + atti cifrati (NEW Q4-2027)"
+    crypto_dep: true
+
+  - id: vault-clienti
+    versione_min: "1.0.0"
+    ruolo: "Anagrafica clienti cifrata (segreto professionale)"
+    crypto_dep: true
+
+  - id: agenda-studio
+    versione_min: "1.0.0"
+    ruolo: "Udienze + calendario condiviso con scadenze auto-importate da fascicoli"
+    crypto_dep: true
+    companion_di: studio-legale-fascicoli
+
+caratteristiche_chiave:
+  - "Master password unica per tutte e 4 le ricette"
+  - "AES-256-GCM at-rest tramite core/shared/crypto/ v0.1.0"
+  - "Skill firmate Gi.Ve: codici (C.C./C.P./C.P.C./C.P.P.) + Cassazione civ/pen + SU"
+  - "Citation strict obbligatoria su pareri/ricerche"
+  - "Fascicoli + parti + atti cifrati at-rest"
+  - "Calcolatore scadenze processuali con sospensione feriale L.742/1969"
+  - "Parcellatore DM Giustizia 55/2014 + aggiornamento DM 147/2022 (civile/lavoro/penale)"
+  - "Auto-save scadenza calcolata nel fascicolo selezionato"
+  - "Audit accessi fascicolo (art.622 c.p. tracking)"
+  - "Zero cloud, zero endpoint Gi.Ve (Punto 14)"
+
+gdpr_value_props:
+  - "Tu avvocato = titolare unico (segreto professionale)"
+  - "Cliente = contitolare per fascicolo"
+  - "Niente DPA con Gi.Ve"
+  - "Atti cifrati at-rest art.32 GDPR + art.622 c.p."
+  - "Registro accessi fascicolo automatico"
+
+cosa_NON_fa:
+  - "Non emette pareri legali"
+  - "Non deposita atti su Polisweb / Consolle Avvocato / PCT"
+  - "Non sostituisce DeJure / IPSOA / EurFisco"
+  - "Non multi-utente LAN (Atheneo Pro processo dev separato Punto 25)"
+
+bundle_upgrade_da: avvocato-solo
+prezzo_upgrade_mensile_eur_delta: 30

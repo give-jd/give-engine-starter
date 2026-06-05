@@ -1,0 +1,4 @@
+streamlit>=1.30
+pdfminer.six>=20240706
+pandas>=2.0
+plotly>=5.18

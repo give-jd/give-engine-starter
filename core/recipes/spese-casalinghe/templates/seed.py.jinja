@@ -1,0 +1,54 @@
+"""Seed iniziale: dieci spese italiane realistiche.
+
+Generato da Gi.Ve Engine ({{ generated_at }}). Idempotente: cancella i seed
+precedenti riconoscibili dalla descrizione prima di reinserirli.
+"""
+
+from __future__ import annotations
+
+from datetime import date, timedelta
+
+from database import ensure_schema, insert_spesa, _connect
+
+
+SEED_MARKER = "[seed]"
+
+SPESE_ESEMPIO = [
+    # giorni indietro, categoria, importo €, descrizione
+    (1,  "Alimentari", 87.40,  "Spesa settimanale Esselunga"),
+    (2,  "Bollette",   142.15, "Bolletta ENEL bimestrale"),
+    (3,  "Auto",       65.00,  "Pieno benzina Eni"),
+    (5,  "Casa",       320.00, "Affitto quota condominio"),
+    (7,  "Svago",      28.50,  "Cinema con la famiglia"),
+    (9,  "Alimentari", 14.20,  "Panetteria + frutta mercato"),
+    (12, "Salute",     85.00,  "Visita dal dentista"),
+    (15, "Auto",       12.40,  "Telepass tratta autostradale"),
+    (18, "Bollette",   38.75,  "Abbonamento ATM Milano (MM)"),
+    (22, "Altro",      19.99,  "Abbonamento streaming mensile"),
+]
+
+
+def _wipe_previous_seeds() -> int:
+    with _connect() as conn:
+        cur = conn.execute("DELETE FROM spese WHERE descrizione LIKE ?", (f"%{SEED_MARKER}%",))
+        return cur.rowcount
+
+
+def run() -> None:
+    ensure_schema()
+    removed = _wipe_previous_seeds()
+    if removed:
+        print(f"Rimosso {removed} seed precedenti.")
+
+    oggi = date.today()
+    inseriti = 0
+    for delta, categoria, importo, descr in SPESE_ESEMPIO:
+        data_iso = (oggi - timedelta(days=delta)).isoformat()
+        insert_spesa(data_iso, categoria, importo, f"{descr} {SEED_MARKER}")
+        inseriti += 1
+
+    print(f"Inseriti {inseriti} spese di esempio. Apri l'app con: streamlit run app.py")
+
+
+if __name__ == "__main__":
+    run()

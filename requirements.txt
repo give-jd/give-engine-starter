@@ -1,0 +1,9 @@
+# Dipendenze delle SERVERLESS FUNCTION Vercel (api/). SOLO questo file viene
+# installato da Vercel: le function usano esclusivamente httpx (Resend / Lemon
+# Squeezy) + stdlib. NON aggiungere qui altro (engine, ricette): gonfierebbe il
+# bundle delle lambda oltre il limite 250/500MB.
+#
+# Le dipendenze dell'ORCHESTRATOR locale stanno in requirements-engine.txt,
+# quelle delle ricette in requirements-recipes.txt, quelle RAG in
+# requirements-rag.txt — installate dall'installer, MAI da Vercel.
+httpx>=0.27

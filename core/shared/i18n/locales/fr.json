@@ -1,0 +1,51 @@
+{
+  "common": {
+    "yes": "Oui",
+    "no": "Non",
+    "ok": "OK",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "search": "Rechercher",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Opération réussie",
+    "warning": "Attention",
+    "back": "Retour",
+    "next": "Suivant",
+    "close": "Fermer"
+  },
+  "auth": {
+    "vault_locked": "Coffre verrouillé",
+    "vault_unlocked": "Coffre déverrouillé",
+    "master_password": "Mot de passe maître",
+    "unlock": "Déverrouiller",
+    "lock": "Verrouiller",
+    "recovery_phrase": "Phrase de récupération",
+    "tampering_detected": "Altération détectée sur enregistrement chiffré"
+  },
+  "recipe": {
+    "farmacia": {
+      "title": "Cabinet Pharmacie",
+      "subtitle": "Clients, ordonnances, délivrances, DCR, pharmacovigilance",
+      "consenso_dcr_required": "Consentement DCR obligatoire pour consultation"
+    },
+    "rspp": {
+      "title": "Cabinet RSPP (Sécurité au Travail)",
+      "subtitle": "D.Lgs 81/2008. Entreprises, DVR, formation, surveillance médicale",
+      "formazione_scadenza_60gg": "Formation expirant dans les 60 prochains jours"
+    },
+    "agricoltura_bio": {
+      "title": "Cabinet Agriculture Bio",
+      "subtitle": "Règl UE 2018/848. Parcelles, cultures, traitements, inspections",
+      "trattamento_non_conforme": "Traitement non conforme au régime biologique"
+    }
+  },
+  "ui": {
+    "dashboard": "Tableau de bord",
+    "settings": "Paramètres",
+    "logout": "Déconnexion",
+    "n_results": "{n} résultats trouvés"
+  }
+}

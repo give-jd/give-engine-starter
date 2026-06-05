@@ -1,0 +1,1431 @@
+<!doctype html>
+<html lang="it" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gi.Ve Engine — Cabina di Regia</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root { color-scheme: dark; }
+    html, body { background: #0b1020; color: #e2e8f0; font-family: Inter, system-ui, sans-serif; min-height: 100%; }
+    .aurora { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+    .aurora::before, .aurora::after {
+      content: ''; position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%;
+      filter: blur(120px); opacity: 0.4; mix-blend-mode: screen;
+      animation: drift 22s ease-in-out infinite alternate;
+    }
+    .aurora::before { background: radial-gradient(circle, #7c3aed 0%, transparent 60%); top: -25vmax; left: -10vmax; }
+    .aurora::after  { background: radial-gradient(circle, #06b6d4 0%, transparent 60%); bottom: -25vmax; right: -10vmax; animation-delay: -8s; }
+    @keyframes drift { 0% { transform: translate3d(0,0,0); } 100% { transform: translate3d(6vmax,4vmax,0); } }
+
+    .progress-fill {
+      background: linear-gradient(90deg, #7c3aed, #06b6d4);
+      transition: width .8s cubic-bezier(.2,.7,.2,1);
+      box-shadow: 0 0 24px -4px rgba(124,58,237,0.6);
+    }
+
+    .gear-spin { animation: spin 4s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .reveal { opacity: 0; transform: translateY(16px); transition: opacity .6s ease, transform .6s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
+
+    .banner-in  { animation: banner-in .5s cubic-bezier(.2,.7,.2,1) forwards; }
+    .banner-out { animation: banner-out .4s ease-in forwards; }
+    @keyframes banner-in {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: none; }
+    }
+    @keyframes banner-out { to { opacity: 0; transform: translateY(-20px); } }
+
+    .recipe-card { transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease; }
+    .recipe-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(124,58,237,0.6);
+      box-shadow: 0 0 40px -10px rgba(124,58,237,0.5);
+    }
+    .recipe-card.highlight {
+      animation: card-pulse 1.6s ease-in-out 3;
+      border-color: rgba(34,211,238,0.8) !important;
+    }
+    @keyframes card-pulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(34,211,238,0.0), 0 0 40px -10px rgba(34,211,238,0.4); }
+      50%     { box-shadow: 0 0 0 6px rgba(34,211,238,0.18), 0 0 60px -5px rgba(34,211,238,0.9); }
+    }
+
+    .delivery-bg {
+      background:
+        radial-gradient(ellipse at top left, rgba(124,58,237,0.35), transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(6,182,212,0.35), transparent 50%),
+        #0b1020;
+    }
+  </style>
+</head>
+
+<body class="antialiased">
+  <div class="aurora"></div>
+
+  <!-- ToS status banner (top-right) -->
+  <div id="tos-banner" class="fixed top-4 right-4 z-40 w-[min(92vw,420px)] hidden">
+    <div class="rounded-2xl border border-amber-400/40 bg-slate-900/95 backdrop-blur p-4 shadow-2xl">
+      <div class="flex items-start gap-3">
+        <span class="text-2xl">📜</span>
+        <div class="flex-1 min-w-0">
+          <p id="tos-banner-title" class="text-sm font-semibold text-white">
+            Aggiornamento Termini di Servizio
+          </p>
+          <p id="tos-banner-detail" class="mt-0.5 text-xs text-slate-400"></p>
+          <div class="mt-3 flex items-center gap-2 flex-wrap">
+            <a id="tos-banner-link" href="https://engine.givegroup.it/legal/terms-archive"
+               target="_blank" rel="noopener noreferrer"
+               class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-semibold transition">
+              Leggi i dettagli →
+            </a>
+            <button id="tos-banner-later" class="px-3 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white transition">
+              Più tardi
+            </button>
+          </div>
+        </div>
+        <button id="tos-banner-close" class="text-slate-400 hover:text-white text-lg leading-none">×</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ToS substantial-change modal (blocking dopo data vigore) -->
+  <div id="tos-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-6">
+    <div class="max-w-lg w-full rounded-3xl border border-amber-400/50 bg-slate-900 p-6 shadow-2xl">
+      <h2 class="font-display text-2xl font-bold text-white">Aggiornamento sostanziale dei Termini</h2>
+      <p id="tos-modal-detail" class="mt-3 text-slate-300 text-sm"></p>
+      <label class="mt-5 flex items-start gap-3 cursor-pointer">
+        <input type="checkbox" id="tos-modal-accept" class="mt-1 w-4 h-4 accent-amber-400" />
+        <span class="text-sm text-slate-200">
+          Ho letto e accetto i nuovi Termini di Servizio.
+        </span>
+      </label>
+      <div class="mt-5 flex items-center gap-3 flex-wrap">
+        <button id="tos-modal-confirm" disabled
+                class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-bold text-sm transition">
+          Conferma e continua
+        </button>
+        <a id="tos-modal-link" href="https://engine.givegroup.it/legal/termini.html"
+           target="_blank" rel="noopener noreferrer"
+           class="px-3 py-2 text-xs text-amber-300 hover:text-amber-100">
+          Leggi i Termini integralmente →
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Updates banner (top-right slide-in) -->
+  <div id="updates-banner" class="fixed top-4 right-4 z-40 w-[min(92vw,420px)] hidden">
+    <div class="rounded-2xl border border-cyan-400/40 bg-slate-900/95 backdrop-blur p-4 shadow-2xl">
+      <div class="flex items-start gap-3">
+        <span class="text-2xl">✨</span>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold text-white">
+            Ci sono <span id="updates-count" class="text-cyan-300">…</span> novità dall'ultima volta
+          </p>
+          <p class="mt-0.5 text-xs text-slate-400" id="updates-detail"></p>
+          <div class="mt-3 flex items-center gap-2 flex-wrap">
+            <a href="/novita" class="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-semibold transition">
+              Guarda cosa c'è di nuovo →
+            </a>
+            <button id="updates-later" class="px-3 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white transition">
+              Più tardi
+            </button>
+          </div>
+        </div>
+        <button id="updates-close" class="text-slate-400 hover:text-white text-lg leading-none">×</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Banner Caveman -->
+  <div id="caveman-banner-host" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[min(92vw,560px)] hidden">
+    <div id="caveman-banner" class="rounded-2xl border border-cyan-400/40 bg-slate-900/90 backdrop-blur px-5 py-3 shadow-2xl flex items-center gap-4">
+      <div class="text-3xl">🧠</div>
+      <div class="flex-1">
+        <p class="text-sm text-slate-300">Ottimizzazione attiva</p>
+        <p class="text-base font-semibold text-white">
+          Risparmiati <span id="cv-tokens" class="text-cyan-300">0</span> token
+          (≈ €<span id="cv-euro" class="text-cyan-300">0</span>)
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <header class="relative z-10 max-w-6xl mx-auto px-6 pt-10 pb-6 flex items-center justify-between">
+    <a href="#" id="home-link" class="flex items-center gap-2">
+      <span class="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-400 grid place-items-center text-slate-950 font-black">G</span>
+      <span class="text-lg font-semibold tracking-tight">Gi.Ve <span class="text-cyan-300">Engine</span></span>
+    </a>
+    <div class="flex items-center gap-3">
+      <p class="text-xs text-slate-400 hidden md:block">Cabina di Regia · locale · italiano</p>
+      <button id="license-toggle"
+              class="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/[0.03] hover:border-cyan-400/60 hover:bg-cyan-500/10 transition text-sm"
+              title="La mia licenza">
+        <span aria-hidden="true">🔒</span>
+        <span id="license-pill" class="text-[10px] uppercase tracking-widest text-slate-300 font-semibold">starter</span>
+      </button>
+      <a id="catalogo-link" href="#recipes-grid"
+         class="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/[0.03] hover:border-cyan-400/60 hover:bg-cyan-500/10 transition text-sm"
+         title="Catalogo ricette">
+        <span aria-hidden="true">📚</span>
+        <span class="hidden md:inline text-slate-300">Catalogo</span>
+      </a>
+      <a id="novita-link" href="/novita"
+         class="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/[0.03] hover:border-cyan-400/60 hover:bg-cyan-500/10 transition text-sm"
+         title="Novità del catalogo">
+        <span aria-hidden="true">🆕</span>
+        <span class="hidden md:inline text-slate-300">Novità</span>
+      </a>
+      <a id="risorse-ia-link" href="/risorse-ia"
+         class="relative flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/[0.03] hover:border-cyan-400/60 hover:bg-cyan-500/10 transition text-sm"
+         title="Risorse IA">
+        <span aria-hidden="true">🤖</span>
+        <span class="hidden md:inline text-slate-300">Risorse IA</span>
+        <span id="risorse-ia-dot" class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-slate-950 hidden"
+              style="animation: pulse 1.4s ease-in-out infinite"></span>
+      </a>
+      <a href="https://engine.givegroup.it/commissioni"
+         target="_blank" rel="noopener noreferrer"
+         class="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/[0.03] hover:border-cyan-400/60 hover:bg-cyan-500/10 transition text-sm"
+         title="Ricette su Richiesta">
+        <span aria-hidden="true">🛠️</span>
+        <span class="hidden md:inline text-slate-300">Su Richiesta</span>
+      </a>
+      <button id="settings-toggle"
+              class="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/[0.03] hover:border-cyan-400/60 hover:bg-cyan-500/10 transition text-sm"
+              title="Impostazioni">
+        <span aria-hidden="true">⚙</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Welcome banner (first launch only) -->
+  <div id="welcome-banner" class="relative z-10 max-w-6xl mx-auto px-6 hidden">
+    <div class="rounded-3xl border border-cyan-400/40 bg-gradient-to-r from-cyan-500/10 to-violet-500/10 backdrop-blur p-6 md:p-7 shadow-glow">
+      <div class="flex items-start gap-5">
+        <div class="text-4xl">🎉</div>
+        <div class="flex-1">
+          <p class="font-display text-xl md:text-2xl font-semibold text-white">Benvenuto in Gi.Ve Engine!</p>
+          <p class="mt-2 text-slate-300 text-sm leading-relaxed">
+            Adesso lo trovi nel <span id="welcome-location" class="text-white font-semibold">menu delle applicazioni</span>
+            del tuo computer. Per riaprirlo basta un doppio click sull'icona.
+          </p>
+          <label class="mt-4 inline-flex items-center gap-2 cursor-pointer select-none">
+            <input id="welcome-autostart" type="checkbox" class="accent-cyan-400 w-4 h-4" />
+            <span class="text-sm text-slate-200">Avvialo automaticamente quando accendo il PC</span>
+          </label>
+        </div>
+        <button id="welcome-close" class="text-slate-400 hover:text-white text-xl leading-none">×</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI environment onboarding card (shows only when recommendation_level != 'ready') -->
+  <div id="ai-setup-banner" class="relative z-10 max-w-6xl mx-auto px-6 mt-3 hidden">
+    <div class="rounded-3xl border border-amber-400/30 bg-amber-500/[0.06] backdrop-blur p-6 md:p-7">
+      <div class="flex items-start gap-5">
+        <div class="text-3xl">🔧</div>
+        <div class="flex-1">
+          <p class="font-display text-xl font-semibold text-white">Setup veloce dell'ambiente</p>
+          <p class="mt-2 text-slate-300 text-sm leading-relaxed">
+            <strong class="text-emerald-300">Gi.Ve Engine funziona già da solo.</strong>
+            Per estendere i progetti con assistenza AI ti consigliamo di installare uno di questi:
+          </p>
+          <ul id="ai-setup-checks" class="mt-3 text-sm space-y-1"></ul>
+          <div class="mt-4 flex items-center gap-2 flex-wrap">
+            <a href="/risorse-ia" class="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-semibold transition">
+              Vedi i percorsi consigliati →
+            </a>
+            <button id="ai-setup-later" class="px-3 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white transition">
+              Più tardi
+            </button>
+          </div>
+        </div>
+        <button id="ai-setup-close" class="text-slate-400 hover:text-white text-xl leading-none">×</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings slide-over -->
+  <div id="settings-overlay" class="fixed inset-0 z-50 hidden">
+    <div id="settings-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+    <aside class="absolute right-0 top-0 h-full w-full sm:w-[420px] bg-slate-950 border-l border-white/10 shadow-2xl overflow-y-auto">
+      <div class="p-6">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-xs uppercase tracking-widest text-slate-400">Sistema</p>
+            <h2 class="mt-1 font-display text-2xl font-bold">Impostazioni</h2>
+          </div>
+          <button id="settings-close" class="text-slate-400 hover:text-white text-2xl leading-none">×</button>
+        </div>
+
+        <section class="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="font-semibold text-white">Avvio automatico</p>
+              <p class="mt-1 text-xs text-slate-400">Gi.Ve Engine partirà ogni volta che accendi il computer.</p>
+              <p id="settings-os-hint" class="mt-2 text-[11px] text-slate-500"></p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer mt-1">
+              <input id="settings-autostart" type="checkbox" class="sr-only peer" />
+              <div class="w-11 h-6 bg-white/10 rounded-full peer-checked:bg-cyan-500 transition relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition peer-checked:after:translate-x-5"></div>
+            </label>
+          </div>
+          <p id="settings-autostart-feedback" class="mt-3 text-xs hidden"></p>
+        </section>
+
+        <section class="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="font-semibold text-white">Avvio da terminale (bash profile)</p>
+              <p class="mt-1 text-xs text-slate-400">
+                Avvia Gi.Ve Engine a ogni login del terminale aggiungendo una riga a
+                <code class="text-slate-200">~/.bash_profile</code>. Utile per ambienti server/headless
+                o se l'avvio automatico standard non parte.
+              </p>
+              <p class="mt-2 text-[11px] text-amber-300/80">
+                ⚠ Modifica il tuo <code>~/.bash_profile</code>. Rimovibile in ogni momento da qui.
+              </p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer mt-1">
+              <input id="settings-autostart-shell" type="checkbox" class="sr-only peer" />
+              <div class="w-11 h-6 bg-white/10 rounded-full peer-checked:bg-cyan-500 transition relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition peer-checked:after:translate-x-5"></div>
+            </label>
+          </div>
+          <p id="settings-autostart-shell-feedback" class="mt-3 text-xs hidden"></p>
+        </section>
+
+        <section class="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="font-semibold text-white">Esponi su rete locale</p>
+              <p class="mt-1 text-xs text-slate-400">
+                Permetti di aprire la Cabina dal telefono o da altri PC della tua rete Wi-Fi.
+              </p>
+              <p class="mt-2 text-[11px] text-amber-300/80">
+                ⚠ Apri la porta 5000 nel firewall e usa solo su reti private fidate.
+              </p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer mt-1">
+              <input id="settings-expose-lan" type="checkbox" class="sr-only peer" />
+              <div class="w-11 h-6 bg-white/10 rounded-full peer-checked:bg-amber-400 transition relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition peer-checked:after:translate-x-5"></div>
+            </label>
+          </div>
+          <p id="settings-expose-lan-feedback" class="mt-3 text-xs hidden"></p>
+        </section>
+
+        <section class="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <p class="font-semibold text-white">Disinstalla Gi.Ve Engine</p>
+          <p class="mt-1 text-xs text-slate-400">
+            Rimuove icona e launcher dal tuo computer. <span class="text-slate-200">Le ricette generate restano</span> dove le hai salvate.
+          </p>
+          <div class="mt-3 space-y-3">
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Apri un terminale e lancia:</p>
+              <div class="relative rounded-lg bg-slate-950/80 border border-white/10 p-3 font-mono text-xs text-slate-100 overflow-x-auto">
+                <code id="uninstall-cmd-default">givengine uninstall</code>
+                <button data-copy-target="uninstall-cmd-default" class="settings-copy-btn absolute top-2 right-2 px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-[10px] text-slate-300 border border-white/10">Copia</button>
+              </div>
+            </div>
+            <details>
+              <summary class="cursor-pointer text-xs text-cyan-300 hover:text-cyan-200">Voglio cancellare anche i miei dati locali</summary>
+              <div class="mt-2 relative rounded-lg bg-slate-950/80 border border-rose-400/30 p-3 font-mono text-xs text-rose-100 overflow-x-auto">
+                <code id="uninstall-cmd-purge">givengine uninstall --purge</code>
+                <button data-copy-target="uninstall-cmd-purge" class="settings-copy-btn absolute top-2 right-2 px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-[10px] text-slate-300 border border-white/10">Copia</button>
+              </div>
+              <p class="mt-2 text-[11px] text-rose-300">⚠ Distrugge anche venv + licenza + cartella ~/.givengine.</p>
+            </details>
+            <p class="text-[11px] text-slate-500">
+              Su Windows: aprire PowerShell e digitare <code class="px-1 py-0.5 rounded bg-white/5">givengine uninstall</code>.
+              Bug o domande: <a href="https://github.com/give-jd/give-engine-starter/issues" class="text-cyan-300 hover:underline">GitHub issues</a>.
+            </p>
+          </div>
+        </section>
+
+        <section class="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <p class="font-semibold text-white">Stato installazione</p>
+          <dl class="mt-3 grid grid-cols-1 gap-y-1.5 text-xs">
+            <div class="flex justify-between"><dt class="text-slate-400">Sistema</dt><dd id="settings-os" class="text-slate-100">—</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-400">Cartella</dt><dd id="settings-home" class="text-slate-100 font-mono text-[11px]">—</dd></div>
+          </dl>
+        </section>
+      </div>
+    </aside>
+  </div>
+
+  <!-- License panel (slide-over) -->
+  <div id="license-overlay" class="fixed inset-0 z-50 hidden">
+    <div id="license-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+    <aside class="absolute right-0 top-0 h-full w-full sm:w-[420px] bg-slate-950 border-l border-white/10 shadow-2xl overflow-y-auto">
+      <div class="p-6">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-xs uppercase tracking-widest text-slate-400">La mia licenza</p>
+            <h2 class="mt-1 font-display text-2xl font-bold">Gestione abbonamento</h2>
+          </div>
+          <button id="license-close" class="text-slate-400 hover:text-white text-2xl leading-none">×</button>
+        </div>
+
+        <!-- STARTER view -->
+        <div id="license-view-starter" class="mt-6 hidden">
+          <div class="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5">
+            <p class="font-semibold text-white">Sei nel piano gratuito.</p>
+            <p class="mt-1 text-sm text-slate-300">Sblocca tutto il catalogo per accedere a ricette premium, Caveman Optimizer Pro e supporto via email.</p>
+            <a href="https://engine.givegroup.it/#pricing" target="_blank" rel="noopener"
+               class="mt-4 inline-flex items-center justify-center px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-sm transition">
+              Vedi i piani →
+            </a>
+          </div>
+
+          <div class="mt-6">
+            <p class="text-sm text-slate-300 mb-2">Hai già una license key?</p>
+            <form id="license-form" class="space-y-3">
+              <input id="license-input"
+                     type="text"
+                     autocomplete="off"
+                     spellcheck="false"
+                     placeholder="XXXX-XXXX-XXXX-XXXX"
+                     maxlength="35"
+                     class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-white/10 focus:border-cyan-400 focus:outline-none text-white font-mono tracking-wider text-center text-base" />
+              <p id="license-input-hint" class="text-xs text-slate-500">Trovi la chiave nell'email di conferma del tuo ordine.</p>
+
+              <button type="submit" id="license-submit"
+                      class="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-cyan-400 text-slate-950 font-bold disabled:opacity-50 disabled:cursor-not-allowed transition">
+                Attiva
+              </button>
+              <p id="license-feedback" class="text-sm hidden"></p>
+            </form>
+          </div>
+        </div>
+
+        <!-- PAID view -->
+        <div id="license-view-paid" class="mt-6 hidden">
+          <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-5 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-400">Piano</span>
+              <span id="paid-tier-badge" class="text-xs px-2 py-1 rounded-full font-semibold"></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-400">Email</span>
+              <span id="paid-email" class="text-sm text-slate-100"></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-400">Scadenza</span>
+              <span id="paid-expires" class="text-sm text-slate-100"></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-400">Chiave</span>
+              <span id="paid-key" class="text-sm font-mono text-slate-200"></span>
+            </div>
+          </div>
+
+          <a id="paid-portal" href="https://app.lemonsqueezy.com/my-orders" target="_blank" rel="noopener"
+             class="mt-5 inline-flex w-full justify-center items-center px-4 py-3 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-200 border border-cyan-400/40 transition text-sm font-semibold">
+            Gestisci abbonamento →
+          </a>
+
+          <button id="license-deactivate"
+                  class="mt-3 inline-flex w-full justify-center items-center px-4 py-3 rounded-xl border border-rose-400/30 text-rose-300 hover:bg-rose-500/10 transition text-sm">
+            Disattiva da questo PC
+          </button>
+          <p id="license-deactivate-feedback" class="mt-2 text-sm hidden"></p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <main class="relative z-10 max-w-6xl mx-auto px-6 pb-24">
+
+    <section id="home" class="reveal">
+      <h1 class="text-4xl md:text-5xl font-bold tracking-tight">Cosa costruiamo oggi?</h1>
+      <p class="mt-3 text-slate-300 max-w-xl">
+        Scegli un'idea. Gi.Ve Engine la trasforma in un'app vera, sul tuo computer, in meno di un minuto.
+      </p>
+      <div id="recipes-grid" class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+
+      <!-- Bridge card → /commissioni. Shown only after the user has browsed
+           the catalog at least once (preference flag) so it doesn't compete
+           with first-impression of the Cabina. -->
+      <div id="commissioni-bridge" class="mt-8 hidden">
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-center max-w-2xl mx-auto">
+          <p class="text-sm text-slate-300">
+            <span class="text-white font-semibold">Non hai trovato quello che ti serve?</span>
+            Possiamo costruirti una ricetta su misura.
+          </p>
+          <a href="https://engine.givegroup.it/commissioni"
+             target="_blank" rel="noopener noreferrer"
+             class="mt-3 inline-flex items-center text-cyan-300 hover:text-cyan-200 text-sm font-semibold">
+            Richiedi un preventivo →
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- STATE 1: AVANZAMENTO -->
+    <section id="state-progress" class="hidden mt-8">
+      <div class="rounded-3xl border border-white/10 bg-slate-900/70 backdrop-blur p-8 md:p-12 shadow-2xl">
+        <div class="flex items-center gap-5">
+          <div class="text-5xl gear-spin">⚙️</div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm text-slate-400">Sto lavorando per te</p>
+            <h2 id="progress-message" class="text-2xl md:text-3xl font-semibold text-white mt-1">Avvio in corso…</h2>
+          </div>
+          <div class="text-right">
+            <p id="progress-pct" class="text-3xl font-bold text-cyan-300">0%</p>
+            <p id="progress-eta" class="text-xs text-slate-400 mt-1">⏳ stima…</p>
+          </div>
+        </div>
+        <div class="mt-6 h-3 rounded-full bg-white/10 overflow-hidden">
+          <div id="progress-fill" class="progress-fill h-full" style="width: 0%"></div>
+        </div>
+
+        <details id="kanji-reveal" class="mt-8 group">
+          <summary class="cursor-pointer text-xs text-slate-400 hover:text-slate-200 select-none">
+            🔍 Mostra cosa sta scrivendo l'IA
+          </summary>
+          <div class="mt-3 rounded-xl border border-cyan-400/20 bg-slate-950/60 p-4 text-cyan-200 font-mono text-sm">
+            <p class="text-[10px] uppercase tracking-widest text-slate-500 mb-1">kanji background — linguaggio macchina</p>
+            <p id="kanji-text" class="text-base leading-relaxed">—</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <!-- STATE 2: HUMAN-IN-THE-LOOP -->
+    <section id="state-question" class="hidden mt-8">
+      <div class="rounded-3xl border border-white/10 bg-slate-900/70 backdrop-blur p-8 md:p-12 shadow-2xl">
+        <div class="flex items-start gap-5">
+          <div class="text-5xl">🤔</div>
+          <div class="flex-1">
+            <p class="text-sm text-slate-400">Una piccola scelta tua</p>
+            <h2 id="question-text" class="text-2xl md:text-3xl font-semibold text-white mt-1">…</h2>
+          </div>
+        </div>
+        <div id="question-options" class="mt-8 grid gap-3 md:grid-cols-2"></div>
+        <p class="mt-6 text-sm text-slate-400">Non c'è una scelta sbagliata. Puoi cambiare idea dopo.</p>
+      </div>
+    </section>
+
+    <!-- STATE 4: CONSEGNA -->
+    <section id="state-delivery" class="hidden mt-8">
+      <div class="delivery-bg rounded-3xl border border-cyan-400/40 p-10 md:p-14 shadow-2xl text-center">
+        <p class="text-6xl">🎉</p>
+        <h2 class="mt-4 text-4xl md:text-5xl font-bold text-white">La tua applicazione è viva!</h2>
+        <p id="delivery-message" class="mt-3 text-slate-200"></p>
+
+        <a id="delivery-link" target="_blank" rel="noopener"
+           class="mt-10 inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-violet-500 to-cyan-400 text-slate-950 font-bold text-lg shadow-2xl hover:scale-[1.02] transition">
+          Apri la mia App →
+        </a>
+
+        <div class="mt-10 max-w-xl mx-auto text-left">
+          <details class="rounded-xl border border-white/10 bg-slate-950/40 p-4">
+            <summary class="cursor-pointer text-slate-200 font-semibold select-none">
+              Come provarla in 30 secondi
+            </summary>
+            <div id="tutorial-content" class="mt-4 text-sm text-slate-300 leading-relaxed space-y-3">
+              <p class="text-slate-500">Caricamento istruzioni…</p>
+            </div>
+          </details>
+        </div>
+
+        <button id="delivery-again"
+                class="mt-8 px-5 py-2 rounded-xl border border-white/15 text-slate-200 hover:border-white/40 transition">
+          Crea un'altra app
+        </button>
+      </div>
+    </section>
+
+    <!-- STATE: errore -->
+    <section id="state-error" class="hidden mt-8">
+      <div class="rounded-3xl border border-rose-500/40 bg-slate-900/70 p-8 text-center">
+        <p class="text-5xl">⚠️</p>
+        <h2 class="mt-4 text-2xl font-bold text-white">Qualcosa non è andato</h2>
+        <p id="error-message" class="mt-2 text-slate-300"></p>
+        <button onclick="goHome()" class="mt-6 px-5 py-2 rounded-xl border border-white/15 hover:border-white/40">Torna alla home</button>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    const SECTIONS = ['home', 'state-progress', 'state-question', 'state-delivery', 'state-error'];
+    function showSection(id) {
+      SECTIONS.forEach(s => {
+        const el = document.getElementById(s);
+        if (el) el.classList.toggle('hidden', s !== id);
+      });
+      const el = document.getElementById(id);
+      if (el) requestAnimationFrame(() => el.classList.add('visible'));
+    }
+
+    let activeWS = null;
+    let currentBuildId = null;
+    let currentRecipeId = null;
+
+    function goHome() {
+      if (activeWS) { try { activeWS.close(); } catch(e) {} }
+      activeWS = null;
+      currentBuildId = null;
+      loadRecipes();
+      showSection('home');
+    }
+    document.getElementById('home-link').addEventListener('click', (e) => { e.preventDefault(); goHome(); });
+    document.getElementById('delivery-again').addEventListener('click', goHome);
+
+    const TIER_RANK = { 'starter': 0, 'catalog': 1, 'all-access': 2 };
+    function recipeIsLocked(recipeTier, userTier) {
+      return (TIER_RANK[recipeTier] || 0) > (TIER_RANK[userTier] || 0);
+    }
+
+    // Logo ideografico per ogni ricetta: glifo CJK scelto in modo deterministico
+    // dall'id (stabile nel tempo e automatico anche per ricette future), in linea
+    // col tema KanjiCompressor. Niente più placeholder vuoto.
+    const RECIPE_GLYPHS = [
+      '記','蓄','光','車','測','油','薬','録','医','契','家','建','書','金','報','暦',
+      '鍵','庫','図','税','診','検','守','集','計','農','食','衛','産','倉','帳','簿',
+      '価','標','線','量','灯','業','規','範',
+    ];
+    function recipeGlyph(id) {
+      let h = 0;
+      const s = String(id || '');
+      for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+      return RECIPE_GLYPHS[h % RECIPE_GLYPHS.length];
+    }
+
+    async function loadRecipes() {
+      const grid = document.getElementById('recipes-grid');
+      grid.innerHTML = '<p class="text-slate-400">Carico le ricette…</p>';
+
+      // Resolve current user tier (graceful fallback to starter).
+      let userTier = 'starter';
+      try {
+        const lic = await fetch('/license/status').then(r => r.ok ? r.json() : null);
+        if (lic && lic.tier) userTier = lic.tier;
+      } catch {}
+
+      const res = await fetch('/recipes');
+      const recipes = await res.json();
+      grid.innerHTML = '';
+      if (!recipes.length) {
+        grid.innerHTML = '<p class="text-slate-400">Nessuna ricetta disponibile.</p>';
+        return;
+      }
+      const makeCard = (r, locked, built) => {
+        const glyph = recipeGlyph(r.id);
+        const card = document.createElement('button');
+        card.dataset.recipeId = r.id;
+        card.dataset.locked = locked ? '1' : '0';
+        card.className = 'recipe-card text-left rounded-2xl border border-white/10 bg-white/[0.03] p-6'
+                       + (locked ? ' opacity-80 hover:border-amber-400/60' : '');
+        const tierBadge = r.tier === 'starter'
+          ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30">STARTER</span>'
+          : r.tier === 'catalog'
+            ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-400/30">CATALOGO</span>'
+            : '<span class="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-300 border border-violet-400/30">ALL-ACCESS</span>';
+        const customBadge = r.badge
+          ? `<div class="mt-3 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-violet-500/10 text-violet-200 text-[11px] border border-violet-400/30">${r.badge}</div>`
+          : '';
+        const lockedBadge = locked
+          ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-400/30 ml-1">🔒</span>'
+          : '';
+        const notInstalled = r.installed === false;
+        const cta = locked
+          ? `<p class="mt-5 text-amber-300 text-sm font-semibold">Sblocca con il Catalogo →</p>`
+          : notInstalled
+            ? `<p class="mt-5 text-violet-300 text-sm font-semibold">⤓ Aggiorna per installarla</p>`
+            : built
+              ? `<p class="mt-5 text-emerald-300 text-sm font-semibold">▶ Avvia questa app</p>`
+              : `<p class="mt-5 text-cyan-300 text-sm font-semibold">Costruisci questa app →</p>`;
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-start gap-3 min-w-0">
+              <span class="shrink-0 w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500/30 to-cyan-400/20 border border-white/10 grid place-items-center text-2xl font-black text-cyan-200 select-none" aria-hidden="true">${glyph}</span>
+              <div class="flex items-center gap-2 flex-wrap">
+                <h3 class="text-xl font-semibold text-white">${r.nome_visualizzato}</h3>
+                ${tierBadge}${lockedBadge}
+              </div>
+            </div>
+            <span class="text-xs px-2 py-1 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 whitespace-nowrap">
+              ~${r.tempo_stimato_secondi}s
+            </span>
+          </div>
+          ${customBadge}
+          <p class="mt-2 text-slate-300 text-sm">${r.descrizione_breve}</p>
+          <div class="mt-4 flex flex-wrap gap-2">
+            ${(r.moduli_attivati || []).slice(0, 4).map(m => `<span class="text-[11px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-slate-300">${m}</span>`).join('')}
+          </div>
+          ${cta}
+        `;
+        card.addEventListener('click', () => {
+          if (locked) {
+            // Apre la gestione licenza (da lì: attiva chiave o "Vedi i piani" sul sito)
+            document.getElementById('license-toggle').click();
+            return;
+          }
+          if (notInstalled) {
+            // Inclusa nel piano ma non ancora scaricata: indirizza all'aggiornamento.
+            alert('Questa ricetta è inclusa nel tuo piano ma non è ancora installata.\nAggiorna Gi.Ve Engine (riavvio o Impostazioni) per scaricarla.');
+            return;
+          }
+          startBuild(r.id);
+        });
+        return card;
+      };
+
+      const sectionHeading = (titolo, sotto) => {
+        const h = document.createElement('div');
+        h.className = 'col-span-full mt-2 mb-1';
+        h.innerHTML = `<h3 class="font-display text-lg font-semibold text-white">${titolo}</h3>`
+          + (sotto ? `<p class="text-xs text-slate-400 mt-0.5">${sotto}</p>` : '');
+        return h;
+      };
+
+      // Separa: le tue app (costruite) / pronte da costruire / bloccate (Catalogo).
+      const tue = [], daCostruire = [], bloccate = [];
+      recipes.forEach(r => {
+        if (recipeIsLocked(r.tier, userTier)) bloccate.push(r);
+        else if (r.built) tue.push(r);
+        else daCostruire.push(r);
+      });
+
+      if (tue.length) {
+        grid.appendChild(sectionHeading('▶ Le tue app', 'Già costruite — clicca per riavviarle'));
+        tue.forEach(r => grid.appendChild(makeCard(r, false, true)));
+      }
+      if (daCostruire.length) {
+        grid.appendChild(sectionHeading('🧩 Pronte da costruire', 'Incluse nel tuo piano'));
+        daCostruire.forEach(r => grid.appendChild(makeCard(r, false, false)));
+      }
+      if (bloccate.length) {
+        grid.appendChild(sectionHeading(
+          `🔒 Catalogo completo — ${bloccate.length} ricette da sbloccare`,
+          'Richiedono una license key Catalogo o All-Access'));
+        bloccate.forEach(r => grid.appendChild(makeCard(r, true, false)));
+        const banner = document.createElement('div');
+        banner.className = 'col-span-full mt-4 rounded-2xl border border-cyan-400/30 bg-gradient-to-br from-cyan-500/10 to-violet-500/10 p-6 text-center';
+        banner.innerHTML =
+          `<p class="font-display text-xl font-bold text-white">Sblocca tutte le ${bloccate.length} ricette del Catalogo</p>`
+          + `<p class="mt-1 text-sm text-slate-300">Una sola license key: tutte le ricette premium, Caveman Optimizer Pro e aggiornamenti.</p>`
+          + `<button type="button" id="lc-open-license" class="mt-4 inline-flex px-5 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold transition">Sblocca il Catalogo →</button>`
+          + `<p class="mt-2 text-[11px] text-slate-400">Apri la gestione licenza: attiva una chiave o vai ai piani sul sito.</p>`;
+        grid.appendChild(banner);
+        const openBtn = banner.querySelector('#lc-open-license');
+        if (openBtn) openBtn.addEventListener('click', () => document.getElementById('license-toggle').click());
+      }
+
+      // Mark catalog as "browsed" (used to gate the /commissioni bridge card
+      // on the next visits) and reveal the bridge card if the flag is set.
+      try {
+        const browsedKey = 'catalog_browsed_at';
+        if (!localStorage.getItem(browsedKey)) {
+          localStorage.setItem(browsedKey, new Date().toISOString());
+        } else {
+          const b = document.getElementById('commissioni-bridge');
+          if (b) b.classList.remove('hidden');
+        }
+      } catch {}
+
+      // ?highlight=<id> from /novita "Provala ora →" or similar deep-links.
+      const highlightId = new URLSearchParams(location.search).get('highlight');
+      if (highlightId) {
+        const target = grid.querySelector(`[data-recipe-id="${CSS.escape(highlightId)}"]`);
+        if (target) {
+          requestAnimationFrame(() => {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            target.classList.add('highlight');
+            // Clear querystring + class once pulse completes so a refresh
+            // doesn't keep re-pulsing the same card.
+            setTimeout(() => {
+              target.classList.remove('highlight');
+              const u = new URL(location.href);
+              u.searchParams.delete('highlight');
+              history.replaceState({}, '', u.toString());
+            }, 5200);
+          });
+        }
+      }
+    }
+
+    async function startBuild(recipeId) {
+      currentRecipeId = recipeId;
+      showSection('state-progress');
+      setProgress({ messaggio: 'Mi sto preparando…', percentuale: 2, tempo_rimasto_sec: null, kanji_background: '' });
+
+      const res = await fetch(`/build/${recipeId}`, { method: 'POST' });
+      if (!res.ok) { showError(`Impossibile avviare la ricetta (${res.status}).`); return; }
+      const { build_id } = await res.json();
+      currentBuildId = build_id;
+
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      const ws = new WebSocket(`${proto}://${location.host}/stream/${build_id}`);
+      activeWS = ws;
+
+      ws.onmessage = (ev) => {
+        const msg = JSON.parse(ev.data);
+        handleStateMessage(msg);
+      };
+      ws.onerror = () => showError('Connessione persa. Riprova tra un attimo.');
+    }
+
+    function handleStateMessage(msg) {
+      switch (msg.stato) {
+        case 'avanzamento':  showSection('state-progress'); setProgress(msg); break;
+        case 'human_in_loop': showSection('state-question'); setQuestion(msg); break;
+        case 'caveman':      showCavemanBanner(msg); break;
+        case 'consegna':     showSection('state-delivery'); setDelivery(msg); break;
+        case 'errore':       showError(msg.messaggio || 'Errore sconosciuto'); break;
+        default: console.warn('stato sconosciuto', msg);
+      }
+    }
+
+    function setProgress(msg) {
+      document.getElementById('progress-message').textContent = msg.messaggio || '…';
+      document.getElementById('progress-fill').style.width = `${msg.percentuale || 0}%`;
+      document.getElementById('progress-pct').textContent = `${msg.percentuale || 0}%`;
+      const eta = msg.tempo_rimasto_sec;
+      document.getElementById('progress-eta').textContent =
+        eta != null ? `⏳ Tempo stimato rimasto: ${eta}s` : '⏳ stima…';
+      document.getElementById('kanji-text').textContent = msg.kanji_background || '—';
+    }
+
+    function setQuestion(msg) {
+      document.getElementById('question-text').textContent = msg.messaggio || '…';
+      const host = document.getElementById('question-options');
+      host.innerHTML = '';
+      (msg.opzioni || []).forEach((opt) => {
+        const b = document.createElement('button');
+        b.className = 'px-6 py-5 rounded-2xl border border-white/15 bg-white/[0.04] hover:border-cyan-400/60 hover:bg-cyan-500/10 transition text-left';
+        b.innerHTML = `<span class="text-lg font-semibold text-white">${opt}</span>`;
+        b.addEventListener('click', () => answerQuestion(msg.id_domanda, opt));
+        host.appendChild(b);
+      });
+    }
+
+    async function answerQuestion(idDomanda, risposta) {
+      await fetch(`/answer/${currentBuildId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_domanda: idDomanda, risposta }),
+      });
+      showSection('state-progress');
+    }
+
+    function showCavemanBanner(msg) {
+      const host = document.getElementById('caveman-banner-host');
+      const banner = document.getElementById('caveman-banner');
+      const tokens = msg.tokens_saved || 0;
+      const euro = msg.euro_saved || 0;
+      host.classList.remove('hidden');
+      banner.classList.remove('banner-out');
+      banner.classList.add('banner-in');
+      countUp('cv-tokens', tokens, 1100, (v) => Math.round(v).toLocaleString('it-IT'));
+      countUp('cv-euro', euro, 1100, (v) => v.toFixed(2));
+      setTimeout(() => {
+        banner.classList.remove('banner-in');
+        banner.classList.add('banner-out');
+        setTimeout(() => host.classList.add('hidden'), 400);
+      }, 4000);
+    }
+
+    function countUp(elId, target, duration, fmt) {
+      const el = document.getElementById(elId);
+      const start = performance.now();
+      const from = 0;
+      function tick(now) {
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const v = from + (target - from) * eased;
+        el.textContent = fmt ? fmt(v) : Math.round(v);
+        if (t < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function setDelivery(msg) {
+      document.getElementById('delivery-message').textContent = msg.messaggio || '';
+      const link = document.getElementById('delivery-link');
+      link.href = msg.link || '#';
+      try {
+        confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
+        setTimeout(() => confetti({ particleCount: 80, spread: 110, origin: { y: 0.4 } }), 350);
+      } catch (e) {}
+
+      const recipe = msg.recipe_id || currentRecipeId;
+      if (recipe) {
+        fetch(`/recipes/${recipe}/tutorial`).then(r => r.ok ? r.text() : '').then(text => {
+          const out = document.getElementById('tutorial-content');
+          if (!text) { out.innerHTML = '<p class="text-slate-500">Nessun tutorial trovato.</p>'; return; }
+          const blocks = text.split(/^##\s+/m).slice(1, 4).map(b => b.trim()).map(b => {
+            const [first, ...rest] = b.split('\n');
+            const body = rest.join(' ').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>');
+            return `<div><p class="font-semibold text-white">${first}</p><p class="mt-1 text-slate-300">${body}</p></div>`;
+          });
+          out.innerHTML = blocks.length ? blocks.join('') : `<pre class="whitespace-pre-wrap text-xs">${text.slice(0, 600)}…</pre>`;
+        });
+      }
+    }
+
+    function showError(text) {
+      showSection('state-error');
+      document.getElementById('error-message').textContent = text;
+    }
+
+    document.querySelectorAll('.reveal').forEach(el => requestAnimationFrame(() => el.classList.add('visible')));
+    loadRecipes();
+    try {
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      const hb = new WebSocket(`${proto}://${location.host}/heartbeat`);
+      hb.onopen = () => hb.send('ping');
+    } catch (e) {}
+
+    // ============================================================ License panel
+    const LICENSE_OVERLAY = document.getElementById('license-overlay');
+    const LICENSE_PILL = document.getElementById('license-pill');
+    const LIC_VIEW_STARTER = document.getElementById('license-view-starter');
+    const LIC_VIEW_PAID = document.getElementById('license-view-paid');
+
+    function setLicensePill(tier) {
+      const map = {
+        'starter':    { label: 'starter',    cls: 'text-slate-300' },
+        'catalog':    { label: 'catalogo',   cls: 'text-cyan-300' },
+        'all-access': { label: 'all-access', cls: 'text-violet-300' },
+      };
+      const meta = map[tier] || map.starter;
+      LICENSE_PILL.textContent = meta.label;
+      LICENSE_PILL.className = 'text-[10px] uppercase tracking-widest font-semibold ' + meta.cls;
+    }
+
+    function renderLicenseStatus(s) {
+      setLicensePill(s.tier || 'starter');
+      const isPaid = s.valid && (s.tier === 'catalog' || s.tier === 'all-access');
+      LIC_VIEW_STARTER.classList.toggle('hidden', isPaid);
+      LIC_VIEW_PAID.classList.toggle('hidden', !isPaid);
+      if (!isPaid) return;
+
+      const tBadge = document.getElementById('paid-tier-badge');
+      if (s.tier === 'all-access') {
+        tBadge.className = 'text-xs px-2 py-1 rounded-full font-semibold bg-violet-500/15 text-violet-300 border border-violet-400/30';
+        tBadge.textContent = 'All-Access';
+      } else {
+        tBadge.className = 'text-xs px-2 py-1 rounded-full font-semibold bg-cyan-500/15 text-cyan-300 border border-cyan-400/30';
+        tBadge.textContent = 'Catalogo';
+      }
+      document.getElementById('paid-email').textContent = s.customer_email_masked || '—';
+      let exp = '—';
+      if (s.expires_at) {
+        try { exp = 'Si rinnova il ' + new Date(s.expires_at).toLocaleDateString('it-IT', { day:'numeric', month:'long', year:'numeric' }); }
+        catch { exp = s.expires_at; }
+      } else {
+        exp = 'Senza scadenza';
+      }
+      document.getElementById('paid-expires').textContent = exp;
+      document.getElementById('paid-key').textContent = s.license_key_masked || '—';
+    }
+
+    async function refreshLicenseStatus() {
+      try {
+        const r = await fetch('/license/status');
+        if (!r.ok) return;
+        const s = await r.json();
+        renderLicenseStatus(s);
+      } catch {}
+    }
+
+    // ---- Input formatting: uppercase + auto-dash every 4 chars ----
+    const input = document.getElementById('license-input');
+    input.addEventListener('input', (e) => {
+      const raw = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const parts = [];
+      for (let i = 0; i < raw.length; i += 4) parts.push(raw.slice(i, i + 4));
+      e.target.value = parts.join('-').slice(0, 35);
+    });
+
+    // ---- Open / close panel ----
+    document.getElementById('license-toggle').addEventListener('click', () => {
+      LICENSE_OVERLAY.classList.remove('hidden');
+      refreshLicenseStatus();
+    });
+    document.getElementById('license-close').addEventListener('click', () => {
+      LICENSE_OVERLAY.classList.add('hidden');
+    });
+    document.getElementById('license-backdrop').addEventListener('click', () => {
+      LICENSE_OVERLAY.classList.add('hidden');
+    });
+
+    // ---- Activate ----
+    document.getElementById('license-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submit = document.getElementById('license-submit');
+      const feedback = document.getElementById('license-feedback');
+      const key = input.value.trim();
+      if (!key) return;
+
+      submit.disabled = true;
+      const origLabel = submit.textContent;
+      submit.textContent = 'Attivo…';
+      feedback.classList.add('hidden');
+
+      try {
+        const r = await fetch('/license/activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ license_key: key }),
+        });
+        const data = await r.json();
+        if (data.success) {
+          feedback.className = 'text-sm text-emerald-300';
+          feedback.textContent = '✓ ' + (data.message || 'Licenza attivata');
+          feedback.classList.remove('hidden');
+          setTimeout(() => {
+            renderLicenseStatus(data.status);
+            // refresh la home per mostrare le nuove ricette
+            loadRecipes();
+          }, 600);
+        } else {
+          feedback.className = 'text-sm text-rose-300';
+          feedback.textContent = '✗ ' + (data.message || 'Attivazione fallita');
+          feedback.classList.remove('hidden');
+        }
+      } catch (err) {
+        feedback.className = 'text-sm text-rose-300';
+        feedback.textContent = '✗ Errore di connessione. Riprova tra qualche secondo.';
+        feedback.classList.remove('hidden');
+      } finally {
+        submit.disabled = false;
+        submit.textContent = origLabel;
+      }
+    });
+
+    // ---- Deactivate ----
+    document.getElementById('license-deactivate').addEventListener('click', async () => {
+      const fb = document.getElementById('license-deactivate-feedback');
+      try {
+        const r = await fetch('/license/deactivate', { method: 'POST' });
+        const data = await r.json();
+        fb.className = 'mt-2 text-sm ' + (data.success ? 'text-emerald-300' : 'text-amber-300');
+        fb.textContent = data.message;
+        fb.classList.remove('hidden');
+        setTimeout(() => {
+          refreshLicenseStatus();
+          loadRecipes();
+        }, 600);
+      } catch {
+        fb.className = 'mt-2 text-sm text-rose-300';
+        fb.textContent = 'Errore di rete, riprova.';
+        fb.classList.remove('hidden');
+      }
+    });
+
+    // Initial status fetch (sets the pill colour from the moment the page loads)
+    refreshLicenseStatus();
+
+    // ============================================================ System panel
+    const SYSTEM_OVERLAY = document.getElementById('settings-overlay');
+    const WELCOME_BANNER = document.getElementById('welcome-banner');
+    let _systemSnapshot = null;
+
+    function applySystemSnapshot(s) {
+      _systemSnapshot = s;
+      // Settings panel content
+      const osEl = document.getElementById('settings-os');
+      const homeEl = document.getElementById('settings-home');
+      const hintEl = document.getElementById('settings-os-hint');
+      const tog = document.getElementById('settings-autostart');
+      if (osEl)   osEl.textContent = s.os_label || s.os || '—';
+      if (homeEl) homeEl.textContent = s.give_home || '—';
+      if (hintEl) hintEl.textContent = ({
+        'macos':   'Su Mac usiamo LaunchAgents in ~/Library/LaunchAgents.',
+        'linux':   'Su Linux usiamo ~/.config/autostart/.',
+        'windows': 'Su Windows usiamo HKCU\\...\\Run.',
+      })[s.os] || '';
+      if (tog) tog.checked = !!s.autostart;
+      const togShell = document.getElementById('settings-autostart-shell');
+      if (togShell) togShell.checked = !!s.autostart_shell;
+      const lan = document.getElementById('settings-expose-lan');
+      if (lan) lan.checked = !!s.expose_lan;
+
+      // Welcome banner content
+      const loc = document.getElementById('welcome-location');
+      if (loc) loc.textContent = s.shortcut_location || 'menu delle applicazioni';
+      const wTog = document.getElementById('welcome-autostart');
+      if (wTog) wTog.checked = !!s.autostart;
+
+      if (s.is_first_launch) {
+        WELCOME_BANNER.classList.remove('hidden');
+      }
+    }
+
+    async function fetchSystemStatus(markSeen) {
+      try {
+        const url = '/system/status' + (markSeen ? '?mark_seen=true' : '');
+        const r = await fetch(url);
+        if (!r.ok) return;
+        applySystemSnapshot(await r.json());
+      } catch {}
+    }
+
+    async function toggleAutostart(enabled, feedbackId) {
+      try {
+        const r = await fetch('/system/autostart', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled }),
+        });
+        const data = await r.json();
+        if (feedbackId) {
+          const fb = document.getElementById(feedbackId);
+          if (fb) {
+            fb.className = 'mt-3 text-xs ' + (data.success ? 'text-emerald-300' : 'text-rose-300');
+            fb.textContent = data.message;
+            fb.classList.remove('hidden');
+          }
+        }
+        // Sync both toggles from the authoritative snapshot
+        const tog = document.getElementById('settings-autostart');
+        const wTog = document.getElementById('welcome-autostart');
+        if (tog) tog.checked = !!data.autostart;
+        if (wTog) wTog.checked = !!data.autostart;
+        if (_systemSnapshot) _systemSnapshot.autostart = !!data.autostart;
+      } catch {
+        if (feedbackId) {
+          const fb = document.getElementById(feedbackId);
+          if (fb) {
+            fb.className = 'mt-3 text-xs text-rose-300';
+            fb.textContent = 'Errore di rete, riprova.';
+            fb.classList.remove('hidden');
+          }
+        }
+      }
+    }
+
+    // Open / close settings overlay
+    document.getElementById('settings-toggle').addEventListener('click', () => {
+      SYSTEM_OVERLAY.classList.remove('hidden');
+      fetchSystemStatus(false);
+    });
+    document.getElementById('settings-close').addEventListener('click', () => SYSTEM_OVERLAY.classList.add('hidden'));
+    document.getElementById('settings-backdrop').addEventListener('click', () => SYSTEM_OVERLAY.classList.add('hidden'));
+
+    document.getElementById('settings-autostart').addEventListener('change', (e) => {
+      toggleAutostart(e.target.checked, 'settings-autostart-feedback');
+    });
+
+    async function toggleAutostartShell(enabled, feedbackId) {
+      const fb = feedbackId ? document.getElementById(feedbackId) : null;
+      try {
+        const r = await fetch('/system/autostart-shell', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled }),
+        });
+        const data = await r.json();
+        if (fb) {
+          fb.className = 'mt-3 text-xs ' + (data.success ? 'text-emerald-300' : 'text-rose-300');
+          fb.textContent = data.message;
+          fb.classList.remove('hidden');
+        }
+        const t = document.getElementById('settings-autostart-shell');
+        if (t) t.checked = !!data.autostart_shell;
+        if (_systemSnapshot) _systemSnapshot.autostart_shell = !!data.autostart_shell;
+      } catch {
+        if (fb) {
+          fb.className = 'mt-3 text-xs text-rose-300';
+          fb.textContent = 'Errore di rete, riprova.';
+          fb.classList.remove('hidden');
+        }
+      }
+    }
+
+    document.getElementById('settings-autostart-shell').addEventListener('change', (e) => {
+      const on = e.target.checked;
+      if (on && !confirm('Aggiungo una riga di avvio a ~/.bash_profile?\nGi.Ve Engine partirà a ogni login del terminale. Potrai rimuoverla da qui.')) {
+        e.target.checked = false;
+        return;
+      }
+      toggleAutostartShell(on, 'settings-autostart-shell-feedback');
+    });
+
+    document.getElementById('settings-expose-lan').addEventListener('change', async (e) => {
+      const fb = document.getElementById('settings-expose-lan-feedback');
+      try {
+        const r = await fetch('/system/expose-lan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: e.target.checked }),
+        });
+        const data = await r.json();
+        fb.className = 'mt-3 text-xs ' + (data.success ? 'text-amber-300' : 'text-rose-300');
+        fb.textContent = data.message + (data.requires_restart ? ' (riavvia per applicare)' : '');
+        fb.classList.remove('hidden');
+        if (_systemSnapshot) _systemSnapshot.expose_lan = !!data.expose_lan;
+      } catch {
+        fb.className = 'mt-3 text-xs text-rose-300';
+        fb.textContent = 'Errore di rete, riprova.';
+        fb.classList.remove('hidden');
+      }
+    });
+
+    // Welcome banner: close marks first_launch done, checkbox flips autostart.
+    document.getElementById('welcome-close').addEventListener('click', () => {
+      WELCOME_BANNER.classList.add('hidden');
+      // mark seen so we don't show it again on next launch
+      fetch('/system/status?mark_seen=true').catch(() => {});
+    });
+    document.getElementById('welcome-autostart').addEventListener('change', (e) => {
+      toggleAutostart(e.target.checked, null);
+    });
+
+    // Copy buttons inside the Settings panel (uninstall commands)
+    document.querySelectorAll('.settings-copy-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const target = document.getElementById(btn.dataset.copyTarget);
+        if (!target) return;
+        try {
+          await navigator.clipboard.writeText(target.textContent.trim());
+          const orig = btn.textContent;
+          btn.textContent = '✓';
+          setTimeout(() => { btn.textContent = orig; }, 1400);
+        } catch {
+          btn.textContent = '✗';
+        }
+      });
+    });
+
+    // Boot: fetch system status and mark first_launch as seen on initial load.
+    fetchSystemStatus(true);
+
+    // ============================================================ Catalog updates banner
+    async function checkCatalogUpdates() {
+      // Dismissed this session (Più tardi clicked) -> don't auto-show again
+      if (sessionStorage.getItem('updates-dismissed') === '1') return;
+
+      // If this is a brand-new install today, don't pile up another banner.
+      // Use the system snapshot already fetched.
+      const isFirst = _systemSnapshot && _systemSnapshot.is_first_launch === true;
+      if (isFirst) return;
+
+      let data = null;
+      try {
+        const r = await fetch('/catalog/updates');
+        if (r.ok) data = await r.json();
+      } catch {}
+      if (!data || !data.has_updates) return;
+
+      const banner = document.getElementById('updates-banner');
+      document.getElementById('updates-count').textContent = (data.new_count + data.updated_count);
+      const detail = document.getElementById('updates-detail');
+      const parts = [];
+      if (data.new_count) parts.push(`${data.new_count} nuov${data.new_count === 1 ? 'a ricetta' : 'e ricette'}`);
+      if (data.updated_count) parts.push(`${data.updated_count} aggiornament${data.updated_count === 1 ? 'o' : 'i'}`);
+      detail.textContent = parts.join(' · ');
+      banner.classList.remove('hidden');
+
+      // Pulsing red dot on a virtual "catalog" anchor (gear button reused).
+      const settingsBtn = document.getElementById('settings-toggle');
+      if (settingsBtn && !document.getElementById('updates-dot')) {
+        const dot = document.createElement('span');
+        dot.id = 'updates-dot';
+        dot.className = 'absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-rose-400 ring-2 ring-slate-950';
+        dot.style.animation = 'pulse 1.4s ease-in-out infinite';
+        settingsBtn.classList.add('relative');
+        settingsBtn.appendChild(dot);
+      }
+    }
+    function dismissUpdatesBanner() {
+      document.getElementById('updates-banner').classList.add('hidden');
+      sessionStorage.setItem('updates-dismissed', '1');
+    }
+    document.getElementById('updates-close').addEventListener('click', dismissUpdatesBanner);
+    document.getElementById('updates-later').addEventListener('click', dismissUpdatesBanner);
+
+    // Defer slightly so /system/status has populated _systemSnapshot first.
+    setTimeout(checkCatalogUpdates, 700);
+
+    // ============================================================ ToS status banner / modal
+    // Consumer di GET /system/tos-status (B2-B4 LEGAL_COMPLIANCE).
+    // - Modal bloccante: pending sostanziale dopo data vigore + non già accettato
+    // - Banner non-bloccante: pending ordinaria OR draft in_legal_review
+    async function checkTosStatus() {
+      let tos = null;
+      try {
+        const r = await fetch('/system/tos-status');
+        if (r.ok) tos = await r.json();
+      } catch {}
+      if (!tos) return;
+
+      const today = new Date().toISOString().slice(0, 10);
+      const acceptedKey = 'tos-accepted-' + (tos.pending_version || tos.current_version);
+      const dismissedKey = 'tos-dismissed-' + (tos.pending_version || tos.current_version);
+      const alreadyAccepted = localStorage.getItem(acceptedKey) === '1';
+
+      // CASE A: sostanziale, attivo, non accettato → modal bloccante
+      if (tos.pending_kind === 'substantial_worse'
+          && tos.pending_effective_from
+          && tos.pending_effective_from <= today
+          && !alreadyAccepted) {
+        const m = document.getElementById('tos-modal');
+        document.getElementById('tos-modal-detail').textContent =
+          `È in vigore dal ${tos.pending_effective_from} la versione ${tos.pending_version} dei Termini di Servizio. ` +
+          `Per continuare a usare Gi.Ve Engine devi confermare di averla letta e accettata.`;
+        document.getElementById('tos-modal-link').setAttribute(
+          'href', tos.notice_url || 'https://engine.givegroup.it/legal/termini.html');
+        const cb = document.getElementById('tos-modal-accept');
+        const ok = document.getElementById('tos-modal-confirm');
+        cb.addEventListener('change', () => { ok.disabled = !cb.checked; });
+        ok.addEventListener('click', () => {
+          if (!cb.checked) return;
+          localStorage.setItem(acceptedKey, '1');
+          m.classList.add('hidden');
+          m.classList.remove('flex');
+        });
+        m.classList.remove('hidden');
+        m.classList.add('flex');
+        return;
+      }
+
+      // CASE B: banner non-bloccante (pending ordinario OR draft in revisione)
+      if (sessionStorage.getItem(dismissedKey) === '1') return;
+
+      const show = (title, detail, link) => {
+        document.getElementById('tos-banner-title').textContent  = title;
+        document.getElementById('tos-banner-detail').textContent = detail;
+        document.getElementById('tos-banner-link').setAttribute('href', link);
+        document.getElementById('tos-banner').classList.remove('hidden');
+      };
+
+      if (tos.pending_version && tos.pending_effective_from) {
+        show(
+          `Nuova versione ToS in arrivo (${tos.pending_version})`,
+          `In vigore dal ${tos.pending_effective_from}. Cosa cambia: leggi l'archivio.`,
+          tos.notice_url || 'https://engine.givegroup.it/legal/terms-archive',
+        );
+      } else if (tos.in_legal_review) {
+        // Solo se l'utente non l'ha mai visto in questa session
+        if (sessionStorage.getItem('tos-review-seen') === '1') return;
+        sessionStorage.setItem('tos-review-seen', '1');
+        show(
+          `ToS in revisione legale (v${tos.current_version})`,
+          `La versione 1.0 finale sarà pubblicata dopo i primi clienti paganti.`,
+          tos.notice_url || 'https://engine.givegroup.it/legal/terms-archive',
+        );
+      }
+    }
+
+    function dismissTosBanner() {
+      const v = document.getElementById('tos-banner-title').textContent.match(/v([\d.]+)/);
+      const key = 'tos-dismissed-' + (v ? v[1] : 'current');
+      document.getElementById('tos-banner').classList.add('hidden');
+      sessionStorage.setItem(key, '1');
+    }
+    document.getElementById('tos-banner-close').addEventListener('click', dismissTosBanner);
+    document.getElementById('tos-banner-later').addEventListener('click', dismissTosBanner);
+
+    // Defer beyond updates banner so it appears second
+    setTimeout(checkTosStatus, 1400);
+
+    // ============================================================ AI environment onboarding
+    const AI_DISMISS_THRESHOLD = 3;
+
+    function aiSetupRow(label, installed) {
+      const icon = installed ? '✓' : '❌';
+      const color = installed ? 'text-emerald-300' : 'text-slate-400';
+      const status = installed ? 'rilevato' : 'non rilevato';
+      return `<li><span class="${color} font-mono mr-2">${icon}</span><span class="text-slate-300">${label} ${status}</span></li>`;
+    }
+
+    async function checkAiSetup() {
+      // Suppress on the very first launch — the welcome banner already
+      // takes up the cognitive real estate.
+      if (_systemSnapshot && _systemSnapshot.is_first_launch === true) return;
+
+      // Respect long-term dismissal: 3+ dismissals across distinct days.
+      let prefs = null;
+      try {
+        const r = await fetch('/system/status');
+        // pull a fresh snapshot just for the counters
+        if (r.ok) prefs = await r.json();
+      } catch {}
+
+      let dismissCount = 0;
+      try {
+        // Fetch the full preferences via a helper endpoint isn't available;
+        // we mirror the count locally in localStorage as a fast-path. Source
+        // of truth still server-side via /system/ai-setup-dismiss POSTs.
+        dismissCount = parseInt(localStorage.getItem('ai_setup_dismiss_count') || '0', 10);
+      } catch {}
+      if (dismissCount >= AI_DISMISS_THRESHOLD) return;
+      if (sessionStorage.getItem('ai_setup_session_dismissed') === '1') return;
+
+      let env = null;
+      try {
+        const r = await fetch('/ai-environment/status');
+        if (r.ok) env = await r.json();
+      } catch {}
+      if (!env || !env.summary) return;
+      if (env.summary.recommendation_level === 'ready') return;
+
+      const checks = document.getElementById('ai-setup-checks');
+      checks.innerHTML = [
+        aiSetupRow('Cursor',          !!(env.cursor || {}).installed),
+        aiSetupRow('Windsurf',        !!(env.windsurf || {}).installed),
+        aiSetupRow('Claude Code CLI', !!(env.claude_code || {}).installed),
+      ].join('');
+      document.getElementById('ai-setup-banner').classList.remove('hidden');
+    }
+
+    function dismissAiSetup() {
+      document.getElementById('ai-setup-banner').classList.add('hidden');
+      sessionStorage.setItem('ai_setup_session_dismissed', '1');
+      try {
+        const cur = parseInt(localStorage.getItem('ai_setup_dismiss_count') || '0', 10);
+        const today = new Date().toISOString().slice(0, 10);
+        const lastDay = localStorage.getItem('ai_setup_dismiss_last_day');
+        if (lastDay !== today) {
+          localStorage.setItem('ai_setup_dismiss_count', String(cur + 1));
+          localStorage.setItem('ai_setup_dismiss_last_day', today);
+        }
+      } catch {}
+      // Mirror to preferences.json server-side
+      fetch('/system/ai-setup-dismiss', { method: 'POST' }).catch(() => {});
+    }
+    document.getElementById('ai-setup-close').addEventListener('click', dismissAiSetup);
+    document.getElementById('ai-setup-later').addEventListener('click', dismissAiSetup);
+
+    // Defer enough to let /system/status populate _systemSnapshot first.
+    setTimeout(checkAiSetup, 1100);
+
+    // Orange notification dot on the Risorse IA nav link — only when the
+    // recommendation_level is 'missing' and the user has never visited the
+    // /risorse-ia page yet (preference `risorse_ia_seen`).
+    async function setRisorseIaDot() {
+      try {
+        const env = await fetch('/ai-environment/status').then(r => r.ok ? r.json() : null);
+        if (!env || !env.summary) return;
+        if (env.summary.recommendation_level !== 'missing') return;
+        // Server-side seen flag is set when /risorse-ia is first served, so
+        // we just check the preferences snapshot if available.
+        const status = await fetch('/system/status').then(r => r.ok ? r.json() : null);
+        // _systemSnapshot doesn't expose risorse_ia_seen yet; use localStorage
+        // as a fast path mirror.
+        if (localStorage.getItem('risorse_ia_seen') === '1') return;
+        document.getElementById('risorse-ia-dot').classList.remove('hidden');
+      } catch {}
+    }
+    document.getElementById('risorse-ia-link').addEventListener('click', () => {
+      try { localStorage.setItem('risorse_ia_seen', '1'); } catch {}
+      document.getElementById('risorse-ia-dot').classList.add('hidden');
+    });
+    setTimeout(setRisorseIaDot, 1300);
+  </script>
+</body>
+</html>

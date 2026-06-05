@@ -1,0 +1,40 @@
+id: studio-notaio-bundle
+name: "Studio Notaio"
+tier: catalog
+prezzo_mensile_eur: 99
+prezzo_annuale_eur: 990
+sconto_annuale_pct: 17
+created_at: "2026-05-30T00:00:00Z"
+
+descrizione_breve: >
+  Atti pubblici cifrati + protocollo annuale + adempimenti AdE/Conservatoria +
+  parcellatore + vault parti + agenda. 3 ricette per notai italiani CNN.
+
+target_audience: >
+  Notai iscritti CNN (Consiglio Nazionale del Notariato).
+  Mercato addressable: ~5500 notai attivi Italia.
+
+componenti:
+  - id: studio-notaio
+    versione_min: "1.0.0"
+    ruolo: "Atti pubblici + protocollo + adempimenti + parcellatore (NEW Q1-2029)"
+    crypto_dep: true
+  - id: vault-clienti
+    versione_min: "1.0.0"
+    ruolo: "Vault parti + documenti identita scaduti"
+    crypto_dep: true
+  - id: agenda-studio
+    versione_min: "1.0.0"
+    ruolo: "Calendario stipule + scadenze adempimenti"
+    crypto_dep: true
+    companion_di: studio-notaio
+
+caratteristiche_chiave:
+  - "10 tipologie atto (compravendita/donazione/mutuo/successione/societario/procura/testamento/...)"
+  - "Repertorio + raccolta + protocollo annuale numerazione progressiva"
+  - "Adempimenti AdE/Conservatoria/voltura/CCIAA/antiriciclaggio con scadenze"
+  - "Parcellatore semplificato (aliquote indicative)"
+  - "Parti PF/PG con documento identita + scadenza"
+  - "Master password unica + AES-256-GCM"
+  - "Compliance antiriciclaggio D.Lgs 231/2007"
+  - "Zero cloud (Punto 14)"

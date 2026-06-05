@@ -1,0 +1,20 @@
+Gi.Ve Engine — Starter Kit
+Licenza MIT
+
+Copyright (c) 2026 GI.VE GROUP S.R.L.
+P.IVA / C.F. 01088150147 — R.E.A. SO-81817 — PEC: gi.ve@pec.it
+
+È concesso, gratuitamente, a chiunque ottenga una copia di questo software
+e dei file di documentazione associati (il "Software"), il diritto di usare,
+copiare, modificare, integrare, pubblicare, distribuire, sublicenziare e/o
+vendere copie del Software, alle seguenti condizioni:
+
+L'avviso di copyright qui sopra e questa nota di permesso devono essere
+inclusi in tutte le copie o porzioni sostanziali del Software.
+
+IL SOFTWARE È FORNITO "COSÌ COM'È", SENZA GARANZIE DI ALCUN TIPO, ESPLICITE
+O IMPLICITE. IN NESSUN CASO GLI AUTORI O I TITOLARI DEL COPYRIGHT POSSONO
+ESSERE RITENUTI RESPONSABILI DI ALCUN DANNO DERIVANTE DALL'USO DEL SOFTWARE.
+
+Versione integrale in inglese: vedi LICENSE nel repository.
+Sito ufficiale: https://engine.givegroup.it

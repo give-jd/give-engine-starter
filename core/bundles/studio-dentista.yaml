@@ -1,0 +1,40 @@
+id: studio-dentista-bundle
+name: "Studio Dentista"
+tier: catalog
+prezzo_mensile_eur: 79
+prezzo_annuale_eur: 790
+sconto_annuale_pct: 17
+created_at: "2026-05-30T00:00:00Z"
+
+descrizione_breve: >
+  Cartella odontoiatrica + odontogramma FDI + preventivi + radiografie + consensi
+  art.9 GDPR + vault pazienti + agenda. 3 ricette per dentisti italiani.
+
+target_audience: >
+  Odontoiatri iscritti FNOMCeO area odontoiatrica.
+  Mercato addressable: ~62k dentisti iscritti Italia.
+
+componenti:
+  - id: studio-dentista
+    versione_min: "1.0.0"
+    ruolo: "Cartella + odontogramma FDI + preventivi + radiografie + consensi (NEW Q1-2029)"
+    crypto_dep: true
+  - id: vault-clienti
+    versione_min: "1.0.0"
+    ruolo: "Anagrafica pazienti cifrata + storico spese"
+    crypto_dep: true
+  - id: agenda-studio
+    versione_min: "1.0.0"
+    ruolo: "Appuntamenti sedute + reminder controlli annuali"
+    crypto_dep: true
+    companion_di: studio-dentista
+
+caratteristiche_chiave:
+  - "Odontogramma FDI 32 denti permanenti (notazione internazionale)"
+  - "9 stati dente (sano/cariato/otturato/protesi/estratto/impianto/corona/devitalizzato/mancante)"
+  - "Preventivi con dettaglio voci JSON + accettazione/rifiuto"
+  - "Radiografie 6 tipi (endorale/panoramica/CBCT/cefalometrica/...) con dose DAP"
+  - "Consensi informati GDPR art.9 con hash documento"
+  - "Master password unica + AES-256-GCM"
+  - "Compliance D.Lgs 187/2000 + D.Lgs 101/2020 radioprotezione"
+  - "Zero cloud (Punto 14)"
