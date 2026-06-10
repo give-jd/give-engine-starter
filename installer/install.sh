@@ -595,6 +595,42 @@ download_recipe() {
   fi
 }
 
+# Espande un elenco di slug ricetta con le loro dipendenze "required" transitive
+# leggendo website/catalog/dependency-map.json (mappa slug -> lista required già
+# risolta a build-time del manifest). Stampa su stdout l'elenco espanso e
+# deduplicato (input + required), un slug per riga. Se il file dependency-map non
+# è presente nel pacchetto installato, si comporta come prima: ritorna l'elenco
+# invariato (nessuna espansione).
+expand_required() {
+  local dep_map="$INSTALL_DIR/website/catalog/dependency-map.json"
+  local -a requested=("$@")
+
+  if [[ ! -r "$dep_map" ]] || ! command -v python3 >/dev/null 2>&1; then
+    printf '%s\n' "${requested[@]}"
+    return 0
+  fi
+
+  python3 - "$dep_map" "${requested[@]}" <<'PY'
+import json, sys
+dep_map_path = sys.argv[1]
+requested = sys.argv[2:]
+try:
+    with open(dep_map_path, encoding="utf-8") as fh:
+        dep_map = json.load(fh)
+except Exception:
+    dep_map = {}
+seen = []
+def add(slug):
+    if slug not in seen:
+        seen.append(slug)
+for slug in requested:
+    for req in dep_map.get(slug, []) or []:
+        add(req)
+    add(slug)
+print("\n".join(seen))
+PY
+}
+
 prompt_catalog_recipes() {
   if [[ ! -r /dev/tty ]]; then
     return 0
@@ -618,14 +654,25 @@ prompt_catalog_recipes() {
 
   echo
   step "Scarico ricette Catalog/All-Access disponibili"
+  # Espandi l'elenco richiesto con le dipendenze required transitive prima del
+  # loop di download: così una ricetta che dipende (hard) da un'altra trascina
+  # automaticamente la dipendenza. Senza dependency-map.json l'elenco resta
+  # invariato.
+  local -a recipes=()
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && recipes+=("$line")
+  done < <(expand_required "${KNOWN_CATALOG_RECIPES[@]}")
+  if [[ ${#recipes[@]} -eq 0 ]]; then
+    recipes=("${KNOWN_CATALOG_RECIPES[@]}")
+  fi
   local installed=0
-  for r in "${KNOWN_CATALOG_RECIPES[@]}"; do
+  for r in "${recipes[@]}"; do
     if download_recipe "$r" "$key"; then
       installed=$((installed + 1))
     fi
   done
   if [[ $installed -gt 0 ]]; then
-    ok "${installed}/${#KNOWN_CATALOG_RECIPES[@]} ricette Catalog installate"
+    ok "${installed}/${#recipes[@]} ricette Catalog installate"
   else
     warn "Nessuna ricetta Catalog installata. Verifica la license key."
   fi

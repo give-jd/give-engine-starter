@@ -17,27 +17,32 @@ icon: gauge
 tags: [letture, contatori, gas, luce, acqua, autolettura, italia]
 tempo_stimato_costruzione_secondi: 60
 moduli_attivati:
-  - letture_storage
-  - finestre_autolettura
-  - notifiche_os_native
-  - ocr_foto_contatore_opzionale
-  - grafico_consumi
+- letture_storage
+- finestre_autolettura
+- notifiche_os_native
+- ocr_foto_contatore_opzionale
+- grafico_consumi
 data_persistence: sqlite-local
 personal_data: minimal
 personal_data_categories: [dati-utenze-utente]
 special_categories_supported: false
 external_calls: false
-companions: [bollette-watcher]
 prerequisiti_hardware:
   ram_minima_gb: 2
   python_minimo: "3.10"
   spazio_disco_mb: 50
 domande_human_in_loop:
-  - id: q1
-    domanda_italiano: "Quali utenze gestisci?"
-    opzioni: ["Gas", "Luce", "Acqua", "Tutte e tre"]
-    impatto_tecnico: "Filtra pre-popolazione finestre autolettura per distributore"
-    default: "Tutte e tre"
+- id: q1
+  domanda_italiano: "Quali utenze gestisci?"
+  opzioni: ["Gas", "Luce", "Acqua", "Tutte e tre"]
+  impatto_tecnico: "Filtra pre-popolazione finestre autolettura per distributore"
+  default: "Tutte e tre"
 porta_locale: 8552
 output_dir_default: "~/GiveEngine_apps/letture-contatori"
 streamlit_entrypoint: "app.py"
+dependencies:
+  required: []
+  recommended: []
+  optional:
+  - slug: bollette-watcher
+    reason: ''

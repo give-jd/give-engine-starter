@@ -37,7 +37,7 @@ from typing import Any, Optional
 import uvicorn
 import yaml
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -80,6 +80,53 @@ def _tier_allows(user_tier: str, recipe_tier: str) -> bool:
     except ValueError:
         return True
     return ui >= ri
+
+
+# Pagina pricing pubblica (per i redirect del launcher quando la dipendenza è
+# fuori dal piano dell'utente).
+_PRICING_URL = "https://engine.givegroup.it/#pricing"
+
+
+def _recipe_is_covered(slug: str) -> bool:
+    """True se la ricetta ``slug`` è coperta dalla licenza utente.
+
+    Riusa la regola tier di ``core.build_deps`` (niente duplicazione): il rank
+    della ricetta deve essere ≤ del rank del tier utente.
+    """
+    from core import build_deps, licensing
+    from core.shared.deps.resolver import load_graph
+
+    user_tier = licensing.load_persisted().tier or "starter"
+    graph = load_graph(RECIPES_DIR)
+    dep_tier = build_deps._node_tier(graph, slug)
+    return build_deps._is_covered(dep_tier, user_tier, build_deps._DEFAULT_TIER_RANK)
+
+
+def _ensure_running(slug: str, port: Optional[int]) -> int:
+    """Avvia l'app ricetta ``slug`` se non è già in esecuzione; ritorna la porta.
+
+    Se ``port`` è noto e qualcuno ascolta, riusa quella porta. Altrimenti spawna
+    l'app (ready-app o generator) e attende l'health, registrando la porta.
+    """
+    from core import installed_registry
+
+    data = _recipe_yaml(slug)
+    if port is None:
+        port = int(data.get("porta_locale", 8501))
+
+    # Già in esecuzione su quella porta? Riusa.
+    if not _port_available("127.0.0.1", port):
+        return port
+
+    report = _ready_app_report(slug)
+    report["porta_locale"] = port
+    _spawn_app(report)
+    _mark_built(slug)
+    installed_registry.register_installed(
+        slug, port=port, version=(str(data.get("versione")) if data.get("versione") else None),
+        output_dir=report["output_dir"],
+    )
+    return port
 
 
 def _list_recipes(filter_tier: Optional[str] = None) -> list[dict]:
@@ -230,6 +277,159 @@ def _load_inject_module(recipe_id: str):
     return module
 
 
+# ---- Dependency planning (Fase 2, §4.6) ------------------------------------
+
+def _build_deps_plan(recipe_id: str):
+    """Pianifica le dipendenze di ``recipe_id`` in modo difensivo.
+
+    Costruisce il grafo dalle ricette locali, legge il tier dalla licenza
+    persistita e gli installati dal registro. Se qualcosa fallisce (modulo
+    assente, grafo non caricabile) ritorna ``None`` → la build prosegue come
+    oggi, senza dipendenze.
+
+    Args:
+        recipe_id: Ricetta principale in costruzione.
+
+    Returns:
+        Una tupla ``(plan, graph)`` o ``None`` se la pianificazione non è
+        possibile/necessaria.
+    """
+    try:
+        from core import build_deps
+        from core.shared.deps.resolver import load_graph
+
+        graph = load_graph(RECIPES_DIR)
+        try:
+            from core import licensing
+            user_tier = licensing.load_persisted().tier or "starter"
+        except Exception:
+            user_tier = "starter"
+        installed = build_deps.installed_slugs()
+        plan = build_deps.plan_dependencies(
+            recipe_id, graph=graph, installed=installed, user_tier=user_tier
+        )
+        return plan, graph
+    except Exception:
+        return None
+
+
+def _pricing_url() -> str:
+    """URL pricing per i messaggi di blocco/upsell."""
+    return "https://engine.givegroup.it/#pricing"
+
+
+def _parse_accepted_soft(raw: Any, proposals: list[dict]) -> list[str]:
+    """Normalizza la risposta utente allo step ``proposta_dipendenze``.
+
+    Accetta una lista di slug, una stringa CSV, oppure i valori speciali
+    ``"default"``/None (→ solo le preselezionate). Filtra gli slug fuori dalle
+    proposte e quelli non coperti dalla licenza (upsell non selezionabili).
+
+    Args:
+        raw: Valore grezzo ricevuto da ``/answer``.
+        proposals: Le proposte emesse (per validare slug e copertura).
+
+    Returns:
+        Lista di slug soft accettati e selezionabili.
+    """
+    selectable = {p["slug"] for p in proposals if p.get("covered")}
+    preselected = [p["slug"] for p in proposals if p.get("preselected")]
+    if raw is None or raw == "default":
+        return preselected
+    if isinstance(raw, str):
+        items = [s.strip() for s in raw.split(",") if s.strip()]
+    elif isinstance(raw, (list, tuple)):
+        items = [str(s).strip() for s in raw if str(s).strip()]
+    else:
+        return preselected
+    return [s for s in dict.fromkeys(items) if s in selectable]
+
+
+async def _replay_states_for(ws: WebSocket, session: "BuildSession", slug: str) -> bool:
+    """Esegue la sub-build di una dipendenza ``slug`` (wizard concatenato).
+
+    Riusa lo stesso percorso della consegna principale: se la dipendenza ha
+    ``ui_states.json`` esegue il suo wizard (le domande sono namespaced col
+    prefisso ``<slug>::`` per non collidere con quelle della principale);
+    altrimenti install ready-app senza domande. Al termine registra
+    l'installazione nel registro.
+
+    Args:
+        ws: WebSocket della sessione.
+        session: Sessione di build corrente.
+        slug: Slug della dipendenza da costruire.
+
+    Returns:
+        True se la sub-build è andata a buon fine, False altrimenti.
+    """
+    try:
+        states = _load_ui_states(slug)
+    except FileNotFoundError:
+        states = _synth_ready_states(slug)
+
+    sub_answers: dict[str, str] = {}
+    for entry in states:
+        stato = entry.get("stato")
+        if stato == "human_in_loop":
+            base_qid = entry.get("id_domanda", "q?")
+            qid = f"{slug}::{base_qid}"
+            session.answer_events[qid] = asyncio.Event()
+            payload = dict(entry)
+            payload["id_domanda"] = qid
+            payload["dipendenza_slug"] = slug
+            await ws.send_json(payload)
+            try:
+                await asyncio.wait_for(session.answer_events[qid].wait(), timeout=120)
+            except asyncio.TimeoutError:
+                await ws.send_json({
+                    "stato": "errore",
+                    "messaggio": f"Nessuna risposta per la dipendenza {slug} in 2 minuti, interrompo.",
+                })
+                return False
+            sub_answers[base_qid] = session.answers.get(qid, "")
+            continue
+
+        if stato == "consegna":
+            try:
+                if _is_generator_recipe(slug):
+                    inject_mod = _load_inject_module(slug)
+                    report = inject_mod.build(answers=sub_answers)
+                else:
+                    report = _ready_app_report(slug)
+                spawn_info = _spawn_app(report)
+                _mark_built(slug)
+                try:
+                    from core import installed_registry
+                    installed_registry.register_installed(
+                        slug,
+                        port=int(report.get("porta_locale", 0)) or None,
+                        version=str(_recipe_yaml(slug).get("versione", "")) or None,
+                        output_dir=report.get("output_dir"),
+                    )
+                except Exception:
+                    pass
+                await ws.send_json({
+                    "stato": "avanzamento",
+                    "messaggio": f"Dipendenza «{slug}» installata.",
+                    "percentuale": 100,
+                    "dipendenza_slug": slug,
+                    "link": spawn_info["url"],
+                })
+            except Exception as e:  # noqa: BLE001 — non propagare alla UI
+                await ws.send_json({
+                    "stato": "errore",
+                    "messaggio": f"Errore installando la dipendenza {slug}: {e}",
+                })
+                return False
+            return True
+
+        payload = dict(entry)
+        payload["dipendenza_slug"] = slug
+        await ws.send_json(payload)
+        await asyncio.sleep(_state_delay(entry))
+    return True
+
+
 # ---- State (in-memory) -----------------------------------------------------
 
 class BuildSession:
@@ -375,6 +575,48 @@ def create_app() -> FastAPI:
         if not path.exists():
             raise HTTPException(404, "tutorial.md not found for recipe")
         return path.read_text(encoding="utf-8")
+
+    # --- Installed registry + launcher (Fase 3, spec §4.7) ---
+    @app.get("/api/installed")
+    async def api_installed() -> list[dict]:
+        """Stato live delle ricette installate (per la barra dipendenze runtime)."""
+        from core import installed_registry
+        return installed_registry.list_installed()
+
+    @app.get("/open/{slug}")
+    async def open_recipe(slug: str):
+        """Launcher Cabina: apre una ricetta (avviandola se serve).
+
+        - non installata → redirect alla Cabina (catalogo/install);
+        - non coperta dalla licenza → redirect alla pagina pricing;
+        - installata e coperta → avvia se ferma, poi redirect alla sua porta.
+        """
+        from core import installed_registry, launcher_logic
+
+        installed = {
+            str(r.get("slug"))
+            for r in installed_registry.list_installed()
+            if r.get("slug")
+        }
+        action = launcher_logic.decide_open(
+            slug,
+            installed=installed,
+            get_port=installed_registry.get_port,
+            is_covered=_recipe_is_covered,
+        )
+
+        if action["action"] == "install_redirect":
+            return RedirectResponse("/", status_code=302)
+        if action["action"] == "pricing_redirect":
+            return RedirectResponse(_PRICING_URL, status_code=302)
+
+        # action == "open": assicura che l'app giri, poi redirect alla sua porta.
+        port = action.get("port")
+        try:
+            port = _ensure_running(slug, port)
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(502, f"Avvio di '{slug}' fallito: {exc}") from exc
+        return RedirectResponse(f"http://localhost:{port}", status_code=302)
 
     # --- License management ---
     @app.get("/license/status")
@@ -681,6 +923,67 @@ def create_app() -> FastAPI:
 # ---- Build streaming logic -------------------------------------------------
 
 async def _run_build_stream(ws: WebSocket, session: BuildSession) -> None:
+    # --- Preambolo dipendenze (Fase 2, §4.6) ---------------------------------
+    # Difensivo: se la pianificazione non è disponibile (modulo/grafo assenti)
+    # la build prosegue identica a com'era prima.
+    planned = _build_deps_plan(session.recipe_id)
+    if planned is not None:
+        plan, graph = planned
+
+        # 1) Blocco: una required non coperta dalla licenza → stop senza build.
+        if plan.blocked:
+            await ws.send_json({
+                "stato": "bloccato",
+                "messaggio": (
+                    "Questa ricetta richiede una o più ricette non incluse nel "
+                    "tuo piano: " + ", ".join(plan.blocking_slugs) + "."
+                ),
+                "blocking_slugs": plan.blocking_slugs,
+                "link_pricing": _pricing_url(),
+            })
+            return
+
+        # 2) Proposta soft (recommended preselezionate, optional no, upsell
+        #    per le non coperte) → human_in_loop, risposta via /answer.
+        accepted: list[str] = []
+        if plan.proposals:
+            qid = "__deps_proposta__"
+            session.answer_events[qid] = asyncio.Event()
+            await ws.send_json({
+                "stato": "proposta_dipendenze",
+                "id_domanda": qid,
+                "messaggio": "Vuoi installare anche queste ricette collegate?",
+                "proposte": plan.proposals,
+                "link_pricing": _pricing_url(),
+            })
+            try:
+                await asyncio.wait_for(session.answer_events[qid].wait(), timeout=120)
+            except asyncio.TimeoutError:
+                # Nessuna risposta → procedi con le sole preselezionate.
+                accepted = [p["slug"] for p in plan.proposals if p.get("preselected")]
+            else:
+                raw = session.answers.get(qid)
+                accepted = _parse_accepted_soft(raw, plan.proposals)
+
+        # 3) Coda finale (required + soft accettate), poi sub-build di ciascuna.
+        queue = []
+        try:
+            from core import build_deps
+            queue = build_deps.finalize_queue(plan.required_queue, accepted, graph=graph)
+        except Exception:
+            queue = list(plan.required_queue)
+
+        if queue:
+            await ws.send_json({
+                "stato": "risoluzione_dipendenze",
+                "messaggio": "Installo prima le ricette collegate…",
+                "coda": queue,
+            })
+            for dep_slug in queue:
+                ok = await _replay_states_for(ws, session, dep_slug)
+                if not ok:
+                    return
+
     states = _load_ui_states(session.recipe_id)
 
     for entry in states:
@@ -710,6 +1013,16 @@ async def _run_build_stream(ws: WebSocket, session: BuildSession) -> None:
                     session.report = _ready_app_report(session.recipe_id)
                 spawn_info = _spawn_app(session.report)
                 _mark_built(session.recipe_id)
+                try:
+                    from core import installed_registry
+                    installed_registry.register_installed(
+                        session.recipe_id,
+                        port=int(session.report.get("porta_locale", 0)) or None,
+                        version=str(_recipe_yaml(session.recipe_id).get("versione", "")) or None,
+                        output_dir=session.report.get("output_dir"),
+                    )
+                except Exception:
+                    pass
                 payload = dict(entry)
                 payload["link"] = spawn_info["url"]
                 payload["output_dir"] = session.report["output_dir"]
@@ -936,6 +1249,14 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     _install_signal_handlers()
     url = f"http://localhost:{args.port}"
+
+    # Memorizza l'URL della Cabina così l'helper dependency_bar delle app ricetta
+    # può puntare i link /open/<slug> alla porta giusta (Fase 3, spec §4.7).
+    try:
+        from core import system as _sys
+        _sys.set_pref("cabina_url", url)
+    except Exception:
+        pass
 
     # Fire the catalog manifest fetch as soon as we know we'll boot. Bounded
     # 3s timeout inside the checker; runs in its own daemon thread so it never

@@ -16,29 +16,36 @@ icon: calendar-clock
 tags: [scadenze, auto, casa, bollo, revisione, caldaia, italia]
 tempo_stimato_costruzione_secondi: 60
 moduli_attivati:
-  - scadenze_recurring
-  - notifiche_os_native
-  - template_italia
-  - storico_pagamenti
-  - export_csv
+- scadenze_recurring
+- notifiche_os_native
+- template_italia
+- storico_pagamenti
+- export_csv
 data_persistence: sqlite-local
 personal_data: minimal
 personal_data_categories: [dati-amministrativi-utente]
 special_categories_supported: false
 external_calls: false
-companions: [spese-casalinghe, osservaprezzi-carburanti]
 prerequisiti_hardware:
   ram_minima_gb: 2
   python_minimo: "3.10"
   spazio_disco_mb: 50
 domande_human_in_loop:
-  - id: q1
-    domanda_italiano: "Attivare template precaricati scadenze italiane standard?"
-    opzioni:
-      - "Sì, mostra elenco selezionabile"
-      - "No, inserisco manualmente"
-    impatto_tecnico: "Pre-popola tabella scadenze opt-in"
-    default: "Sì, mostra elenco selezionabile"
+- id: q1
+  domanda_italiano: "Attivare template precaricati scadenze italiane standard?"
+  opzioni:
+  - "Sì, mostra elenco selezionabile"
+  - "No, inserisco manualmente"
+  impatto_tecnico: "Pre-popola tabella scadenze opt-in"
+  default: "Sì, mostra elenco selezionabile"
 porta_locale: 8551
 output_dir_default: "~/GiveEngine_apps/scadenze-auto-casa"
 streamlit_entrypoint: "app.py"
+dependencies:
+  required: []
+  recommended: []
+  optional:
+  - slug: spese-casalinghe
+    reason: ''
+  - slug: osservaprezzi-carburanti
+    reason: ''

@@ -17,38 +17,45 @@ icon: fuel
 tags: [carburanti, prezzi, mimit, fonte-pubblica, italia]
 tempo_stimato_costruzione_secondi: 90
 moduli_attivati:
-  - mimit_csv_fetcher
-  - geocoding_cap_locale
-  - preferiti_distributori
-  - storico_prezzi
-  - rifornimenti_personali
+- mimit_csv_fetcher
+- geocoding_cap_locale
+- preferiti_distributori
+- storico_prezzi
+- rifornimenti_personali
 data_persistence: sqlite-local
 personal_data: minimal
 personal_data_categories: [preferenze-localizzazione-utente]
 special_categories_supported: false
 external_calls: optional-public-source
 external_sources:
-  - name: "MIMIT Anagrafica"
-    url: "https://www.mimit.gov.it/images/exportCSV/anagrafica_impianti_attivi.csv"
-    type: "public-csv"
-    auth: "none"
-    user_data_transmitted: false
-  - name: "MIMIT Prezzi"
-    url: "https://www.mimit.gov.it/images/exportCSV/prezzo_alle_8.csv"
-    type: "public-csv"
-    auth: "none"
-    user_data_transmitted: false
-companions: [scadenze-auto-casa, spese-casalinghe]
+- name: "MIMIT Anagrafica"
+  url: "https://www.mimit.gov.it/images/exportCSV/anagrafica_impianti_attivi.csv"
+  type: "public-csv"
+  auth: "none"
+  user_data_transmitted: false
+- name: "MIMIT Prezzi"
+  url: "https://www.mimit.gov.it/images/exportCSV/prezzo_alle_8.csv"
+  type: "public-csv"
+  auth: "none"
+  user_data_transmitted: false
 prerequisiti_hardware:
   ram_minima_gb: 2
   python_minimo: "3.10"
   spazio_disco_mb: 100
 domande_human_in_loop:
-  - id: q1
-    domanda_italiano: "Il tuo CAP di riferimento per ricerca distributori vicini?"
-    opzioni: ["Inserisci manualmente"]
-    impatto_tecnico: "Geocoding locale CAP→lat/lng (dataset ISTAT precaricato)"
-    default: "Inserisci manualmente"
+- id: q1
+  domanda_italiano: "Il tuo CAP di riferimento per ricerca distributori vicini?"
+  opzioni: ["Inserisci manualmente"]
+  impatto_tecnico: "Geocoding locale CAP→lat/lng (dataset ISTAT precaricato)"
+  default: "Inserisci manualmente"
 porta_locale: 8553
 output_dir_default: "~/GiveEngine_apps/osservaprezzi-carburanti"
 streamlit_entrypoint: "app.py"
+dependencies:
+  required: []
+  recommended: []
+  optional:
+  - slug: scadenze-auto-casa
+    reason: ''
+  - slug: spese-casalinghe
+    reason: ''
