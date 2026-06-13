@@ -239,33 +239,31 @@ cd "\$GIVE_HOME"
 case "\${1:-start}" in
   start|"")  exec "\$GIVE_HOME/.venv/bin/python" -m core.orchestrator "\${@:2}" ;;
   update)
-    echo "Aggiorno Gi.Ve Engine…"
-    echo "  [1/4] Scarico l'ultima versione…"
-    tmp="\$(mktemp -t givengine-bundle-XXXXXX.tar.gz)"
-    if [ -t 1 ]; then DLFLAGS="-fL --progress-bar"; else DLFLAGS="-fsSL"; fi
-    curl \$DLFLAGS "${TARBALL_URL}" -o "\$tmp" || { echo "  ✗ Update fallito (download). Controlla la connessione."; rm -f "\$tmp"; exit 1; }
-    echo "  [2/4] Estraggo i file…"
-    tar -xzf "\$tmp" --strip-components=1 -C "\$GIVE_HOME" || { echo "  ✗ Update fallito (estrazione)."; rm -f "\$tmp"; exit 1; }
-    rm -f "\$tmp"
-    _eng="\$GIVE_HOME/requirements-engine.txt"; [ -f "\$_eng" ] || _eng="\$GIVE_HOME/requirements.txt"
-    if [ -f "\$_eng" ]; then
-      echo "  [3/4] Aggiorno le dipendenze (può richiedere qualche minuto, non chiudere)…"
-      if ! "\$GIVE_HOME/.venv/bin/pip" install --progress-bar off -r "\$_eng"; then
-        echo "  ✗ Update fallito (dipendenze). Riprova o reinstalla."; exit 1
+    GIVE_PORT="\${GIVE_PORT:-5000}"
+    # Se la Cabina è in esecuzione, falle applicare l'update e riavviarsi da sé
+    # (recepisce il codice nuovo senza riavvio manuale). /update è loopback-only.
+    _resp="\$(curl -fsS -m 5 -X POST "http://127.0.0.1:\$GIVE_PORT/update" 2>/dev/null)" && {
+      if printf '%s' "\$_resp" | grep -qE '"restarting": *true'; then
+        echo "✓ Aggiornamento avviato nella Cabina in esecuzione: si riavvia da sola."
+      else
+        echo "✓ La Cabina è già all'ultima versione."
       fi
-      [ -f "\$GIVE_HOME/requirements-recipes.txt" ] && \
-        "\$GIVE_HOME/.venv/bin/pip" install --progress-bar off -r "\$GIVE_HOME/requirements-recipes.txt" || true
+      exit 0
+    }
+    # Cabina non in esecuzione: aggiorno file + dipendenze via Python. apply_update
+    # ha il gate-hash, quindi pip NON reinstalla se i requirements non sono cambiati.
+    echo "Aggiorno Gi.Ve Engine…"
+    if ! "\$GIVE_HOME/.venv/bin/python" -m core.orchestrator --update-only; then
+      echo "  ✗ Update fallito. Controlla la connessione e riprova."; exit 1
     fi
-    # Rigenera il launcher stesso dal nuovo install.sh appena scaricato, così le
-    # migliorie all'installer arrivano via 'update' senza ri-eseguire l'one-liner.
-    # install_launcher scrive in modo atomico (temp+mv): l'fd di questo processo
-    # resta sul vecchio inode, nessuna corruzione dello script in esecuzione.
-    echo "  [4/4] Aggiorno il launcher…"
+    # Rigenera il launcher dal nuovo install.sh appena scaricato, così le migliorie
+    # all'installer arrivano via 'update' senza ri-eseguire l'one-liner. Scrittura
+    # atomica (temp+mv): l'fd di questo processo resta sul vecchio inode.
     if [ -f "\$GIVE_HOME/installer/install.sh" ]; then
       GIVE_HOME="\$GIVE_HOME" bash "\$GIVE_HOME/installer/install.sh" --regen-launcher >/dev/null 2>&1 \
         || echo "  ⚠ launcher non rigenerato; se necessario ri-esegui l'installer."
     fi
-    echo "✓ Gi.Ve Engine aggiornato. Riavvia la Cabina con: givengine start"
+    echo "✓ Gi.Ve Engine aggiornato. Avvia la Cabina con: givengine start"
     ;;
   uninstall) exec bash "\$GIVE_HOME/installer/uninstall.sh" "\${@:2}" ;;
   path)      echo "\$GIVE_HOME" ;;

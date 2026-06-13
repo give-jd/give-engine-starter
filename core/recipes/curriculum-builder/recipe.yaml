@@ -1,0 +1,26 @@
+id: curriculum-builder
+tier: starter
+versione: "1.3.0"
+nome_visualizzato: "Curriculum Builder"
+descrizione_breve: "Crea il tuo CV in 4 layout, Europass incluso, tutto sul tuo PC: niente cloud, niente account"
+category: lavoro
+icon: file-text
+license: MIT
+data_persistence: sqlite-local
+personal_data: minimal
+personal_data_categories: [dati-anagrafici-propri, foto-propria]
+special_categories_supported: false
+# import CV: estrazione AI opt-in con chiave utente (BYOK), nessuna chiamata di default
+external_calls: optional-user-key
+output_type: report
+commission_publication_assisted: false
+tempo_stimato_costruzione_secondi: 60
+moduli_attivati: [wizard_cv, layout_europass, layout_moderno, layout_minimal, layout_compatto, diciture_gdpr, export_html, export_import_json, blind_cv, print_tabs, import_cv]
+porta_locale: 8627
+output_dir_default: "~/GiveEngine_apps/curriculum-builder"
+streamlit_entrypoint: "app.py"
+dependencies:
+  recommended: []
+  optional:
+    - {slug: spese-casalinghe, reason: "Stesso pubblico privati, stesso pattern locale-first"}
+  shared_modules: []

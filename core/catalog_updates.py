@@ -47,6 +47,18 @@ def _days_between(later, earlier):
     return max(0, int((later - earlier).total_seconds() // 86400))
 
 
+def _version_tuple(v) -> tuple:
+    """Versione semver-ish ("1.3.0") → tuple di int per confronto ordinale.
+    Segmenti non numerici → 0 (robusto, niente eccezioni)."""
+    out = []
+    for part in str(v).split("."):
+        try:
+            out.append(int(part))
+        except (ValueError, TypeError):
+            out.append(0)
+    return tuple(out)
+
+
 @dataclass
 class UpdatesResult:
     has_updates: bool = False
@@ -202,6 +214,46 @@ class CatalogUpdateChecker:
             new_recipes=new_recipes,
             updated_recipes=updated_recipes,
         )
+
+    def get_installed_updates(self) -> list:
+        """Ricette INSTALLATE con una versione di catalogo più recente.
+
+        Diversa da ``get_updates_since_last_seen`` (che diffa il manifest vs ciò
+        che l'utente ha *guardato*): qui confronto la versione *installata*
+        (registro locale) con quella del catalogo. Serve alla Cabina per
+        proporre l'aggiornamento delle ricette già in uso (req: CV & co.).
+
+        Returns:
+            lista di dict ``{id, nome, versione_installata, versione_disponibile}``.
+        """
+        manifest = self._load_cache()
+        if not manifest:
+            return []
+        try:
+            from core import installed_registry
+            installed = {
+                r.get("slug"): r for r in installed_registry.list_installed()
+                if r.get("slug")
+            }
+        except Exception:
+            return []
+        out = []
+        for r in manifest.get("recipes", []) or []:
+            rid = r.get("id")
+            row = installed.get(rid)
+            if not row:
+                continue
+            cur = row.get("version")
+            new = str(r.get("versione") or "1.0.0")
+            # `cur` None = registro legacy senza versione: niente confronto affidabile.
+            if cur and _version_tuple(new) > _version_tuple(cur):
+                out.append({
+                    "id": rid,
+                    "nome": r.get("nome_visualizzato") or rid,
+                    "versione_installata": str(cur),
+                    "versione_disponibile": new,
+                })
+        return out
 
     def mark_all_seen(self) -> bool:
         """Persist the current manifest's recipe id -> version map. Returns

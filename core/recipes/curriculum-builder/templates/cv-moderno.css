@@ -1,0 +1,80 @@
+/* Layout 2 — Moderno: sidebar scura + timeline, accent personalizzabile via --accent */
+.cv--moderno {
+  font-family: "Segoe UI", system-ui, sans-serif; font-size: 10.5pt; color: #1f2933;
+  display: grid; grid-template-columns: 72mm 1fr; min-height: 297mm;
+  align-content: start;
+  /* colonna sinistra scura continua per tutta l'altezza */
+  background: linear-gradient(90deg, #1f2933 72mm, #ffffff 72mm);
+}
+
+/* header spalmato sulle due colonne: foto e contatti nella colonna scura, nome nella main */
+.cv--moderno .cv-header { display: contents; }
+.cv--moderno .cv-photo {
+  grid-column: 1; order: -2;
+  width: 40mm; height: 40mm; border-radius: 50%; object-fit: cover;
+  margin: 10mm auto 0; display: block;
+  border: 3px solid var(--accent, #1a5fb4);
+}
+.cv--moderno .cv-name {
+  grid-column: 2; order: -2;
+  font-size: 22pt; font-weight: 300; margin: 12mm 10mm 2mm;
+  color: #111;
+}
+.cv--moderno .cv-name::after {
+  content: ''; display: block; width: 28mm; height: 1.2mm;
+  background: var(--accent, #1a5fb4); margin-top: 2mm;
+}
+.cv--moderno .cv-contacts { grid-column: 1; order: -1; padding: 4mm 8mm; font-size: 8.5pt; }
+.cv--moderno .cv-contact { margin-bottom: 1.5mm; display: flex; flex-direction: column; }
+.cv--moderno .cv-contact-label { font-weight: 700; text-transform: uppercase; font-size: 7pt; opacity: .7; }
+
+/* colonna laterale scura */
+.cv--moderno .cv-side, .cv--moderno .cv-contacts, .cv--moderno .cv-photo {
+  background: #1f2933; color: #f3f4f6;
+}
+.cv--moderno .cv-side { grid-column: 1; padding: 2mm 8mm 10mm; }
+.cv--moderno .cv-side .cv-section-title {
+  color: var(--accent, #5b9bd5); font-size: 9.5pt; text-transform: uppercase;
+  letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,.25);
+  padding-bottom: 1mm; margin: 6mm 0 2mm;
+}
+.cv--moderno .cv-side .cv-list { margin: 0; padding-left: 4mm; }
+.cv--moderno .cv-side li { margin-bottom: 1mm; }
+
+/* colonna principale: timeline */
+.cv--moderno .cv-main { grid-column: 2; padding: 2mm 10mm 10mm; }
+.cv--moderno .cv-main .cv-section-title {
+  font-size: 12pt; color: #111; text-transform: uppercase; letter-spacing: 1px;
+  margin: 7mm 0 3mm;
+}
+.cv--moderno .cv-main .cv-item {
+  position: relative; padding-left: 6mm; margin-bottom: 5mm;
+  border-left: .6mm solid var(--accent, #1a5fb4);
+}
+.cv--moderno .cv-main .cv-item::before {
+  content: ''; position: absolute; left: -1.65mm; top: 1.2mm;
+  width: 2.6mm; height: 2.6mm; border-radius: 50%;
+  background: var(--accent, #1a5fb4);
+}
+.cv--moderno .cv-item-head { display: flex; justify-content: space-between; gap: 4mm; flex-wrap: wrap; }
+.cv--moderno .cv-item-role { font-size: 11.5pt; }
+.cv--moderno .cv-item-org { color: #6b7280; }
+.cv--moderno .cv-item-period { font-size: 8.5pt; color: var(--accent, #1a5fb4); font-weight: 700; margin: .5mm 0 1mm; }
+.cv--moderno .cv-text { margin: .5mm 0; }
+.cv--moderno .cv-list { margin: 0; padding-left: 5mm; }
+
+/* lingue: compatta sì, griglia no */
+.cv--moderno .cv-lang-grid { display: none; }
+.cv--moderno .cv-lang-compact { list-style: none; margin: 0; padding: 0; }
+.cv--moderno .cv-lang-compact li { margin-bottom: 1.2mm; }
+
+.cv--moderno .cv-privacy { grid-column: 2; margin-top: 4mm; padding: 0 10mm 10mm; }
+.cv--moderno .cv-privacy-text { font-size: 7.5pt; color: #6b7280; font-style: italic; }
+.cv--moderno .cv-sign-row { display: flex; justify-content: space-between; margin-top: 5mm; font-size: 9pt; }
+
+@media print {
+  .cv--moderno .cv-item, .cv--moderno .cv-section-title { page-break-inside: avoid; break-inside: avoid; }
+  .cv--moderno, .cv--moderno .cv-side, .cv--moderno .cv-contacts, .cv--moderno .cv-photo {
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+}

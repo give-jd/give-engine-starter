@@ -1,0 +1,55 @@
+/* Layout 1 — Europass: banda blu istituzionale, etichette sezione a sinistra, griglia QCER */
+.cv--europass { font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; color: #111; padding: 0 0 10mm; }
+
+.cv--europass .cv-header {
+  background: #1a5fb4; color: #fff;
+  padding: 10mm 12mm; display: grid;
+  grid-template-columns: auto 1fr; gap: 8mm; align-items: center;
+}
+.cv--europass .cv-photo {
+  width: 35mm; height: 45mm; object-fit: cover;
+  border: 2px solid #fff; background: #fff;
+}
+.cv--europass .cv-name { grid-column: 2; font-size: 20pt; margin: 0; font-weight: 700; letter-spacing: .5px; }
+.cv--europass .cv-contacts { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 1mm 8mm; font-size: 9pt; }
+.cv--europass .cv-contact-label { font-weight: 700; margin-right: 2mm; }
+.cv--europass .cv-contact-label::after { content: ':'; }
+
+/* corpo: stile Europass classico — etichetta sezione a sinistra, contenuto a destra.
+   Ordine canonico: prima main (profilo/esperienze/istruzione), poi side (competenze). */
+.cv--europass { display: flex; flex-direction: column; }
+.cv--europass .cv-header { order: 0; }
+.cv--europass .cv-main { order: 1; }
+.cv--europass .cv-side { order: 2; }
+.cv--europass .cv-side, .cv--europass .cv-main { display: block; padding: 0 12mm; }
+.cv--europass .cv-section { display: grid; grid-template-columns: 42mm 1fr; gap: 6mm; margin-top: 6mm; }
+.cv--europass .cv-section-title {
+  font-size: 10pt; text-transform: uppercase; color: #1a5fb4;
+  margin: 0; border-top: 2px solid #1a5fb4; padding-top: 1.5mm;
+}
+.cv--europass .cv-section > *:not(.cv-section-title) { grid-column: 2; }
+.cv--europass .cv-section-title + * { margin-top: 0; }
+.cv--europass .cv-item { margin-bottom: 4mm; }
+.cv--europass .cv-item-head { display: flex; justify-content: space-between; gap: 4mm; flex-wrap: wrap; }
+.cv--europass .cv-item-role { font-size: 11pt; }
+.cv--europass .cv-item-org { color: #444; }
+.cv--europass .cv-item-period { color: #1a5fb4; font-size: 9pt; margin: .5mm 0 1mm; }
+.cv--europass .cv-text { margin: .5mm 0; }
+.cv--europass .cv-list { margin: 0; padding-left: 5mm; }
+
+/* lingue: Europass mostra la griglia QCER, nasconde la forma compatta */
+.cv--europass .cv-lang-compact { display: none; }
+.cv--europass .cv-lang-grid { border-collapse: collapse; font-size: 8.5pt; width: 100%; }
+.cv--europass .cv-lang-grid th, .cv--europass .cv-lang-grid td {
+  border: 1px solid #9ab4d8; padding: 1mm 2mm; text-align: center;
+}
+.cv--europass .cv-lang-grid th { background: #e8eef7; color: #1a5fb4; }
+.cv--europass .cv-lang-name { text-align: left; font-weight: 700; }
+
+.cv--europass .cv-privacy { margin-top: 8mm; order: 3; padding: 0 12mm 8mm; }
+.cv--europass .cv-privacy-text { font-size: 8pt; color: #555; font-style: italic; }
+.cv--europass .cv-sign-row { display: flex; justify-content: space-between; margin-top: 6mm; font-size: 9pt; }
+
+@media print {
+  .cv--europass .cv-item, .cv--europass .cv-section-title { page-break-inside: avoid; break-inside: avoid; }
+}

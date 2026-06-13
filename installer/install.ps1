@@ -207,22 +207,19 @@ function Install-CliLauncher {
 @echo off
 setlocal
 set GIVE_HOME=$InstallDir
+if "%GIVE_PORT%"=="" set GIVE_PORT=5000
 cd /d %GIVE_HOME%
 if "%~1"=="update" (
+  rem Se la Cabina e' in esecuzione, /update applica il codice nuovo e la riavvia
+  rem da se' (loopback-only). curl.exe e' built-in da Windows 10.
+  curl -fsS -m 5 -X POST "http://127.0.0.1:%GIVE_PORT%/update" >nul 2>nul
+  if not errorlevel 1 ( echo Aggiornamento richiesto alla Cabina in esecuzione: se disponibile, si riavvia da sola. & exit /b )
+  rem Cabina non in esecuzione: aggiorno file + dipendenze via Python. apply_update
+  rem ha il gate-hash, quindi pip NON reinstalla se i requirements non sono cambiati.
   echo Aggiorno Gi.Ve Engine...
-  echo   [1/4] Scarico l'ultima versione...
-  curl -fL --progress-bar "$TarballUrl" -o "%TEMP%\givengine-update.tar.gz"
-  if errorlevel 1 ( echo   Update fallito ^(download^). Controlla la connessione. & exit /b 1 )
-  echo   [2/4] Estraggo i file...
-  tar -xzf "%TEMP%\givengine-update.tar.gz" --strip-components=1 -C "%GIVE_HOME%"
-  if errorlevel 1 ( del "%TEMP%\givengine-update.tar.gz" & echo   Update fallito ^(estrazione^). & exit /b 1 )
-  del "%TEMP%\givengine-update.tar.gz"
-  echo   [3/4] Aggiorno le dipendenze ^(puo' richiedere qualche minuto, non chiudere^)...
-  if exist "%GIVE_HOME%\requirements-engine.txt" ( "%GIVE_HOME%\.venv\Scripts\python.exe" -m pip install --progress-bar off -r "%GIVE_HOME%\requirements-engine.txt" ) else ( "%GIVE_HOME%\.venv\Scripts\python.exe" -m pip install --progress-bar off -r "%GIVE_HOME%\requirements.txt" )
-  if errorlevel 1 ( echo   Update fallito ^(dipendenze^). Riprova o reinstalla. & exit /b 1 )
-  if exist "%GIVE_HOME%\requirements-recipes.txt" "%GIVE_HOME%\.venv\Scripts\python.exe" -m pip install --progress-bar off -r "%GIVE_HOME%\requirements-recipes.txt"
-  echo   [4/4] Aggiorno il launcher...
-  echo Gi.Ve Engine aggiornato. Riavvia con: givengine start
+  "%GIVE_HOME%\.venv\Scripts\python.exe" -m core.orchestrator --update-only
+  if errorlevel 1 ( echo   Update fallito. Controlla la connessione e riprova. & exit /b 1 )
+  echo   Aggiorno il launcher...
   rem regen + exit sulla STESSA riga: cmd ha gia' la riga in memoria, quindi
   rem riscrivere givengine.cmd qui non corrompe l'esecuzione in corso.
   powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%GIVE_HOME%\installer\install.ps1" -RegenLauncher >nul 2>&1 & exit /b

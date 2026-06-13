@@ -12,6 +12,7 @@ Disattivabile con la variabile d'ambiente GIVE_NO_UPDATE=1.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import os
 import subprocess
@@ -67,20 +68,106 @@ def _download_and_extract(dest: str) -> None:
             # symlink/fifo/etc. ignorati di proposito
 
 
-def _pip_install(home: str) -> None:
-    # engine + ricette (NON il requirements.txt root, minimale per Vercel).
-    # Fallback al root se manca l'engine file (bundle vecchi).
-    files = ["requirements-engine.txt", "requirements-recipes.txt"]
+def _req_files(home: str) -> list[str]:
+    """Path dei requirements da installare (engine + ricette).
+
+    NON il requirements.txt root (minimale per Vercel). Fallback al root se
+    manca l'engine file (bundle vecchi). Ritorna solo i file esistenti.
+    """
+    names = ["requirements-engine.txt", "requirements-recipes.txt"]
     if not os.path.exists(os.path.join(home, "requirements-engine.txt")):
-        files = ["requirements.txt", "requirements-recipes.txt"]
-    for fn in files:
-        p = os.path.join(home, fn)
-        if os.path.exists(p):
-            subprocess.run(
-                [sys.executable, "-m", "pip", "install", "-q",
-                 "--disable-pip-version-check", "-r", p],
-                check=False, timeout=600,
-            )
+        names = ["requirements.txt", "requirements-recipes.txt"]
+    return [os.path.join(home, n) for n in names if os.path.exists(os.path.join(home, n))]
+
+
+def _deps_hash(home: str) -> str | None:
+    """sha256 di path+contenuto dei requirements file. None se illeggibili.
+
+    Identifica univocamente lo stato dichiarato delle dipendenze: se non cambia,
+    rilanciare pip è inutile (risolve il reinstall ripetuto a ogni update).
+    """
+    h = hashlib.sha256()
+    paths = _req_files(home)
+    if not paths:
+        return None
+    for p in paths:
+        try:
+            with open(p, "rb") as fh:
+                h.update(os.path.basename(p).encode("utf-8"))
+                h.update(b"\0")
+                h.update(fh.read())
+        except OSError:
+            return None
+    return h.hexdigest()
+
+
+def _pip_install(home: str, *, force: bool = False) -> None:
+    """Installa engine + ricette SOLO se i requirements sono cambiati.
+
+    Gate per hash: se i due requirements file sono byte-identici all'ultimo
+    install riuscito, pip non viene rilanciato (evita di "reinstallare ogni
+    volta gli stessi pacchetti"). `force=True` bypassa il gate.
+    """
+    from core import system as _sys
+    current = _deps_hash(home)
+    if not force and current and _sys.get_pref("deps_install_hash") == current:
+        print("Gi.Ve Engine: dipendenze già aggiornate, salto pip.", flush=True)
+        return
+    ok = True
+    for p in _req_files(home):
+        r = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-q",
+             "--disable-pip-version-check", "-r", p],
+            check=False, timeout=600,
+        )
+        ok = ok and (r.returncode == 0)
+    # Memorizza l'hash solo se tutti i pip sono andati a buon fine: un install
+    # parziale non deve far saltare il retry al prossimo giro.
+    if ok and current:
+        _sys.set_pref("deps_install_hash", current)
+
+
+def check_remote_update() -> str | None:
+    """SHA remoto se più recente di quello installato, altrimenti None.
+
+    Best-effort: None anche offline o se l'API non risponde.
+    """
+    from core import system as _sys
+    last = _sys.get_pref("last_update_sha")
+    sha = _remote_sha()
+    if not sha or sha == last:
+        return None
+    return sha
+
+
+def apply_update(*, force_pip: bool = False) -> dict:
+    """Scarica l'ultima versione, sovrascrive i file e (se cambiate) aggiorna le
+    dipendenze. NON ri-esegue il processo — il caller decide se/come riavviare.
+
+    Returns:
+        dict con ``updated`` (bool: codice nuovo scaricato), ``sha``, ``message``.
+        Best-effort: non solleva, in errore ritorna ``updated=False``.
+    """
+    from core import system as _sys
+    home = str(_sys.GIVE_HOME)
+    try:
+        sha = check_remote_update()
+        if sha:
+            print("Gi.Ve Engine: trovato un aggiornamento, lo applico…", flush=True)
+            _download_and_extract(home)
+        _pip_install(home, force=force_pip)
+        if sha:
+            _sys.set_pref("last_update_sha", sha)
+        return {
+            "updated": bool(sha),
+            "sha": sha or _sys.get_pref("last_update_sha"),
+            "message": ("Aggiornamento applicato."
+                        if sha else "Sei già all'ultima versione."),
+        }
+    except Exception as e:  # noqa: BLE001 — l'update non deve mai propagare eccezioni
+        print(f"[update] saltato ({type(e).__name__}: {e})", flush=True)
+        return {"updated": False, "sha": None,
+                "message": f"Update saltato ({type(e).__name__})."}
 
 
 def maybe_self_update(already_updated: bool, reexec_args: list[str]) -> None:
@@ -89,19 +176,8 @@ def maybe_self_update(already_updated: bool, reexec_args: list[str]) -> None:
     """
     if already_updated or os.environ.get("GIVE_NO_UPDATE"):
         return
-    try:
-        from core import system as _sys
-        home = str(_sys.GIVE_HOME)
-        last = _sys.get_pref("last_update_sha")
-        sha = _remote_sha()
-        if not sha or sha == last:
-            return  # offline o già all'ultima versione
-        print("Gi.Ve Engine: trovato un aggiornamento, lo applico…", flush=True)
-        _download_and_extract(home)
-        _pip_install(home)
-        _sys.set_pref("last_update_sha", sha)
-    except Exception as e:  # noqa: BLE001 — l'avvio non deve mai fallire per l'update
-        print(f"[update] saltato ({type(e).__name__}: {e})", flush=True)
+    res = apply_update()
+    if not res.get("updated"):
         return
     # ricarica col codice aggiornato (mantiene gli argomenti originali)
     os.execv(sys.executable,

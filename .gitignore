@@ -1,0 +1,3 @@
+
+# DB stateful generati a runtime (init_db ricrea da schema.sql)
+core/recipes/*/data/*.db

@@ -1,0 +1,8 @@
+/* Regole comuni a tutti i layout: documento HTML autonomo, stampa A4 */
+* { box-sizing: border-box; }
+body { margin: 0; background: #fff; }
+#cv-preview, .cv-sheet { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; }
+@page { size: A4; margin: 12mm; }
+@media print {
+  #cv-preview, .cv-sheet { width: auto; min-height: 0; margin: 0; }
+}

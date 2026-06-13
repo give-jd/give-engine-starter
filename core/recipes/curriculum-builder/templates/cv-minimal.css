@@ -1,0 +1,49 @@
+/* Layout 3 — Minimal ATS: monocolonna, niente foto/grafica/tabelle, sola tipografia.
+   Pensato per i parser automatici (ATS): ordine lineare, gerarchia testuale. */
+.cv--minimal {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 10.5pt; color: #111; padding: 14mm 16mm;
+}
+
+.cv--minimal .cv-photo { display: none; }           /* niente foto: ATS e anti-bias */
+.cv--minimal .cv-header { margin-bottom: 6mm; }
+.cv--minimal .cv-name { font-size: 18pt; margin: 0 0 2mm; font-weight: 700; }
+.cv--minimal .cv-contacts { font-size: 9pt; color: #333; }
+.cv--minimal .cv-contact { display: inline; }
+.cv--minimal .cv-contact + .cv-contact::before { content: ' · '; }
+.cv--minimal .cv-contact-label { display: none; }   /* solo valori: email, tel… parlano da sé */
+
+/* monocolonna: prima esperienze/istruzione (main), poi competenze (side) — ordine ATS */
+.cv--minimal { display: flex; flex-direction: column; }
+.cv--minimal .cv-header { order: 0; }
+.cv--minimal .cv-main { order: 1; }
+.cv--minimal .cv-side { order: 2; }
+.cv--minimal .cv-side, .cv--minimal .cv-main { display: block; }
+
+.cv--minimal .cv-section { margin-top: 5mm; }
+.cv--minimal .cv-section-title {
+  font-size: 10pt; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.5px; color: #111; margin: 0 0 2mm;
+  border-bottom: .3mm solid #999; padding-bottom: 1mm;
+}
+.cv--minimal .cv-item { margin-bottom: 3.5mm; }
+.cv--minimal .cv-item-head { display: flex; justify-content: space-between; gap: 4mm; flex-wrap: wrap; }
+.cv--minimal .cv-item-role { font-size: 10.5pt; }
+.cv--minimal .cv-item-org { color: #333; }
+.cv--minimal .cv-item-period { font-size: 9pt; color: #555; margin: .3mm 0 .8mm; }
+.cv--minimal .cv-text { margin: .5mm 0; }
+.cv--minimal .cv-list { margin: 0; padding-left: 5mm; }
+
+/* lingue: solo compatta, niente tabella (gli ATS leggono male le tabelle) */
+.cv--minimal .cv-lang-grid { display: none; }
+.cv--minimal .cv-lang-compact { list-style: none; margin: 0; padding: 0; }
+.cv--minimal .cv-lang-compact li { display: inline; }
+.cv--minimal .cv-lang-compact li + li::before { content: ' · '; }
+
+.cv--minimal .cv-privacy { margin-top: 7mm; order: 3; }
+.cv--minimal .cv-privacy-text { font-size: 8pt; color: #555; }
+.cv--minimal .cv-sign-row { display: flex; justify-content: space-between; margin-top: 5mm; font-size: 9pt; }
+
+@media print {
+  .cv--minimal .cv-item, .cv--minimal .cv-section-title { page-break-inside: avoid; break-inside: avoid; }
+}

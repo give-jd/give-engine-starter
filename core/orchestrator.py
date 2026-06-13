@@ -741,6 +741,86 @@ def create_app() -> FastAPI:
         ok = cu.checker().mark_all_seen()
         return {"success": ok}
 
+    # --- App/recipe updates (installed vs catalog) + self-update ---
+    @app.get("/recipes/updates-installed")
+    async def recipes_updates_installed() -> dict:
+        """Ricette installate con una versione di catalogo più recente."""
+        from core import catalog_updates as cu
+        try:
+            return {"updates": cu.checker().get_installed_updates()}
+        except Exception:
+            return {"updates": []}
+
+    @app.get("/update/available")
+    async def update_available() -> dict:
+        """Stato aggiornamenti per la Cabina: codice app (SHA nuovo) + ricette
+        installate da aggiornare. Pollabile a sessione in corso (req #6)."""
+        from core import updater, catalog_updates as cu
+        try:
+            app_sha = updater.check_remote_update()
+        except Exception:
+            app_sha = None
+        try:
+            recipe_updates = cu.checker().get_installed_updates()
+        except Exception:
+            recipe_updates = []
+        return {
+            "app_update": bool(app_sha),
+            "recipe_updates": recipe_updates,
+            "has_any": bool(app_sha) or bool(recipe_updates),
+        }
+
+    @app.post("/update")
+    async def do_update(request: Request) -> dict:
+        # SICUREZZA — due minacce distinte, due controlli:
+        #
+        # 1) Peer della LAN (quando expose_lan bind 0.0.0.0): il source IP deve
+        #    essere loopback, altrimenti un altro host forzerebbe update/restart.
+        client = (request.client.host if request.client else "") or ""
+        if client not in ("127.0.0.1", "::1", "localhost"):
+            raise HTTPException(403, "Aggiornamento consentito solo da questo computer.")
+        #
+        # 2) CSRF drive-by: una pagina web ostile aperta nel browser dell'utente
+        #    può fare fetch POST verso 127.0.0.1 (source IP = loopback, supera il
+        #    check sopra). Sec-Fetch-Site è impostato dal browser e non
+        #    falsificabile da JS; Origin idem. La CLI (curl) NON invia questi
+        #    header → richiesta consentita (nessun contesto browser, niente CSRF).
+        sec_fetch_site = request.headers.get("sec-fetch-site")
+        if sec_fetch_site is not None and sec_fetch_site not in ("same-origin", "none"):
+            raise HTTPException(403, "Richiesta cross-site non consentita.")
+        origin = request.headers.get("origin")
+        if origin:
+            from urllib.parse import urlparse
+            if urlparse(origin).hostname not in ("127.0.0.1", "localhost", "::1"):
+                raise HTTPException(403, "Origine non consentita.")
+
+        from core import updater
+        res = updater.apply_update()
+        restarting = bool(res.get("updated"))
+
+        if restarting:
+            # Re-exec asincrono: lascia che la risposta raggiunga il browser,
+            # poi spegni i figli Streamlit e riavvia col codice nuovo. --no-browser
+            # per non aprire una seconda scheda: il tab corrente si riconnette da sé.
+            host = getattr(request.app.state, "bind_host", DEFAULT_HOST)
+            port = getattr(request.app.state, "bind_port", DEFAULT_PORT)
+
+            def _restart() -> None:
+                time.sleep(1.2)
+                try:
+                    _shutdown_streamlit_children()
+                except Exception:
+                    pass
+                argv = [sys.executable, "-m", "core.orchestrator",
+                        "--updated", "--no-browser",
+                        "--host", str(host), "--port", str(port)]
+                os.execv(sys.executable, argv)
+
+            threading.Thread(target=_restart, name="post-update-restart",
+                             daemon=True).start()
+
+        return {"success": True, "restarting": restarting, **res}
+
     @app.get("/novita", response_class=HTMLResponse)
     async def novita() -> str:
         ui = TEMPLATES_DIR / "novita.html"
@@ -1090,6 +1170,53 @@ def _free_port(host: str, port: int, timeout_s: float = 3.0) -> None:
         time.sleep(0.2)
 
 
+def _free_cabina_port(host: str, port: int, timeout_s: float = 4.0) -> bool:
+    """Termina una PRECEDENTE istanza della Cabina rimasta sulla porta.
+
+    A differenza di ``_free_port`` (usato per le app ricetta), qui verifico via
+    cmdline che il processo in ascolto sia un *nostro* orchestrator
+    (``core.orchestrator``) prima di terminarlo: un avvio mancato non deve
+    uccidere processi estranei che per caso occupano la 5000.
+
+    Returns:
+        True se la porta risulta libera dopo il tentativo, False altrimenti.
+    """
+    if _port_available(host, port):
+        return True
+    try:
+        import psutil  # type: ignore
+    except Exception:
+        return False
+    mypid = os.getpid()
+    for c in psutil.net_connections(kind="inet"):
+        if not (c.laddr and c.laddr.port == port
+                and c.status == psutil.CONN_LISTEN and c.pid):
+            continue
+        if c.pid == mypid:
+            continue
+        try:
+            proc = psutil.Process(c.pid)
+            cmdline = " ".join(proc.cmdline())
+        except Exception:
+            continue
+        if "core.orchestrator" not in cmdline:
+            continue  # processo estraneo: NON lo tocchiamo
+        try:
+            proc.terminate()
+            proc.wait(timeout=timeout_s)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        if _port_available(host, port):
+            return True
+        time.sleep(0.2)
+    return _port_available(host, port)
+
+
 def _default_streamlit_command(output_dir: str, port: int, expose_lan: bool) -> list[str]:
     entry = Path(output_dir) / "app.py"
     if not entry.exists():
@@ -1215,7 +1342,18 @@ def main(argv: Optional[list[str]] = None) -> int:
                         help="Non aprire il browser automaticamente")
     parser.add_argument("--updated", action="store_true",
                         help="Interno: impostato dopo l'auto-update per evitare loop")
+    parser.add_argument("--update-only", action="store_true",
+                        help="Applica l'aggiornamento (file + dipendenze) ed esce, "
+                             "senza avviare la Cabina. Usato da 'givengine update'.")
     args = parser.parse_args(argv)
+
+    # `givengine update` da CLI quando la Cabina NON è in esecuzione: aggiorna i
+    # file + le dipendenze (con gate-hash, niente reinstall inutile) ed esce.
+    if args.update_only:
+        from core import updater
+        res = updater.apply_update()
+        print(res.get("message", "Aggiornamento completato."), flush=True)
+        return 0
 
     # Auto-update all'avvio: se c'è una versione nuova, aggiorna e ri-esegue col
     # codice aggiornato (no-op se offline / già aggiornato / GIVE_NO_UPDATE=1).
@@ -1241,11 +1379,20 @@ def main(argv: Optional[list[str]] = None) -> int:
             args.host = DEFAULT_HOST
 
     if not _port_available(args.host, args.port):
-        Console().print(Panel(
-            f"La porta {args.port} è già in uso. Chiudi l'altra istanza o riprova.",
-            border_style="red",
-        ))
-        return 1
+        # Porta occupata: prova a liberarla SOLO se è una nostra istanza Cabina
+        # rimasta appesa (verifica cmdline). Processi estranei non vengono toccati.
+        if _free_cabina_port(args.host, args.port):
+            Console().print(Panel(
+                f"Trovata un'istanza precedente sulla porta {args.port}: terminata, riparto.",
+                border_style="yellow",
+            ))
+        else:
+            Console().print(Panel(
+                f"La porta {args.port} è già in uso da un altro programma. "
+                "Chiudilo o cambia porta con --port.",
+                border_style="red",
+            ))
+            return 1
 
     _install_signal_handlers()
     url = f"http://localhost:{args.port}"
@@ -1296,6 +1443,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         ).start()
 
     app = create_app()
+    # Tracce per il re-exec post-update (POST /update): host/porta correnti, così
+    # il riavvio mantiene lo stesso bind invece di tornare ai default.
+    app.state.bind_host = args.host
+    app.state.bind_port = args.port
     config = uvicorn.Config(app, host=args.host, port=args.port, log_level="warning")
     server = uvicorn.Server(config)
     server.run()
