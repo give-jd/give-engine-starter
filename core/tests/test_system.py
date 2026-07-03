@@ -61,6 +61,49 @@ class TestPrefs:
         sysmod.set_expose_lan(True)
         assert sysmod.expose_lan_pref() is True
 
+    def test_concurrent_set_pref_no_lost_update(self):
+        """Scritture concorrenti su chiavi diverse non si clobberano a vicenda
+        e il file resta sempre JSON valido (bug: expose_lan spariva)."""
+        import threading
+
+        sysmod.set_expose_lan(True)  # pref "fragile" da preservare
+        keys = [f"k{i}" for i in range(40)]
+
+        def worker(k: str) -> None:
+            for _ in range(25):
+                sysmod.set_pref(k, k)
+
+        threads = [threading.Thread(target=worker, args=(k,)) for k in keys]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        data = json.loads(sysmod.PREFS_FILE.read_text(encoding="utf-8"))
+        assert data["expose_lan"] is True          # mai clobberata
+        assert all(data[k] == k for k in keys)      # nessun lost update
+
+    def test_concurrent_register_installed_no_lost_row(self):
+        """register_installed fa un RMW multi-step sulla lista installed_recipes:
+        sotto prefs_transaction due install concorrenti non si perdono a vicenda."""
+        import threading
+
+        from core import installed_registry as reg
+
+        slugs = [f"recipe-{i}" for i in range(30)]
+
+        def worker(s: str) -> None:
+            reg.register_installed(s, port=8500, version="1.0", output_dir=f"/tmp/{s}")
+
+        threads = [threading.Thread(target=worker, args=(s,)) for s in slugs]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        installed = {r["slug"] for r in reg.list_installed()}
+        assert installed == set(slugs)  # nessuna riga persa
+
 
 class TestFirstLaunch:
     def test_first_launch_true_then_done(self):

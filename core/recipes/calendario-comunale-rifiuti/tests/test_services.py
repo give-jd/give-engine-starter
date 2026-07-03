@@ -230,3 +230,182 @@ def test_cerca_materiale_miss(conn):
     services.add_voce_regolamento(conn, {"materiale": "bucce di banana", "frazione_id": fid})
     out = services.cerca_materiale(conn, "plutonio")
     assert out == []
+
+
+# --- validazioni CRUD mancanti ---
+
+
+def test_frazione_senza_nome_errore(conn):
+    with pytest.raises(ValueError):
+        services.add_frazione(conn, {})
+
+
+def test_ricorrenza_senza_frazione_errore(conn):
+    with pytest.raises(ValueError):
+        services.add_ricorrenza(conn, {"tipo": "settimanale", "giorni_settimana": "1"})
+
+
+def test_ricorrenza_giorno_fuori_range_errore(conn):
+    fid = _frazione(conn)
+    with pytest.raises(ValueError):
+        services.add_ricorrenza(conn, {
+            "frazione_id": fid, "tipo": "settimanale", "giorni_settimana": "8",
+        })
+
+
+def test_eccezione_senza_data_errore(conn):
+    with pytest.raises(ValueError):
+        services.add_eccezione(conn, {"salta": True})
+
+
+def test_eccezione_senza_salta_ne_sposta_errore(conn):
+    with pytest.raises(ValueError):
+        services.add_eccezione(conn, {"data": "2026-06-11"})
+
+
+def test_voce_regolamento_senza_materiale_errore(conn):
+    with pytest.raises(ValueError):
+        services.add_voce_regolamento(conn, {})
+
+
+def test_promemoria_senza_frazione_errore(conn):
+    with pytest.raises(ValueError):
+        services.add_promemoria(conn, {})
+
+
+# --- delete + list ---
+
+
+def test_delete_frazione_cascade(conn):
+    fid = _frazione(conn)
+    services.add_ricorrenza(conn, {
+        "frazione_id": fid, "tipo": "settimanale", "giorni_settimana": "1",
+    })
+    services.delete_frazione(conn, fid)
+    assert services.get_frazione(conn, fid) is None
+    assert services.list_ricorrenze(conn) == []
+
+
+def test_delete_ricorrenza_e_list_filtrato(conn):
+    fid = _frazione(conn)
+    rid = services.add_ricorrenza(conn, {
+        "frazione_id": fid, "tipo": "settimanale", "giorni_settimana": "1",
+    })
+    assert len(services.list_ricorrenze(conn, frazione_id=fid)) == 1
+    services.delete_ricorrenza(conn, rid)
+    assert services.list_ricorrenze(conn, frazione_id=fid) == []
+
+
+def test_list_promemoria_con_nome_frazione(conn):
+    fid = _frazione(conn)
+    services.add_promemoria(conn, {"frazione_id": fid, "anticipo_ore": 6})
+    out = services.list_promemoria(conn)
+    assert len(out) == 1
+    assert out[0]["frazione"] == "Umido"
+
+
+# --- motore: rami residui ---
+
+
+def test_ricorrenza_fuori_validita(conn):
+    fid = _frazione(conn)
+    services.add_ricorrenza(conn, {
+        "frazione_id": fid, "tipo": "settimanale", "giorni_settimana": "4",
+        "valido_da": "2026-07-01",  # inizia dopo la finestra
+    })
+    services.add_ricorrenza(conn, {
+        "frazione_id": fid, "tipo": "settimanale", "giorni_settimana": "3",
+        "valido_a": "2026-06-01",  # finita prima della finestra
+    })
+    out = services.prossime_raccolte(conn, da=date(2026, 6, 10), giorni=7)
+    assert out == []
+
+
+def test_lista_date_token_vuoto_ignorato(conn):
+    fid = _frazione(conn, "RAEE")
+    services.add_ricorrenza(conn, {
+        "frazione_id": fid, "tipo": "lista_date",
+        "date_extra": "2026-06-12, ,2026-06-20,",
+    })
+    out = services.prossime_raccolte(conn, da=date(2026, 6, 10), giorni=15)
+    assert [r["data"] for r in out] == ["2026-06-12", "2026-06-20"]
+
+
+def test_mensile_giorno_31_salta_mesi_corti(conn):
+    fid = _frazione(conn, "Ingombranti")
+    services.add_ricorrenza(conn, {
+        "frazione_id": fid, "tipo": "mensile", "giorno_mese": 31,
+    })
+    # giugno ha 30 giorni: nessuna occorrenza a giugno, si' il 31 luglio
+    out = services.prossime_raccolte(conn, da=date(2026, 6, 1), giorni=61)
+    assert [r["data"] for r in out] == ["2026-07-31"]
+
+
+def test_mensile_attraversa_dicembre(conn):
+    fid = _frazione(conn, "Ingombranti")
+    services.add_ricorrenza(conn, {
+        "frazione_id": fid, "tipo": "mensile", "giorno_mese": 15,
+    })
+    out = services.prossime_raccolte(conn, da=date(2026, 12, 1), giorni=50)
+    date_str = [r["data"] for r in out]
+    assert "2026-12-15" in date_str
+    assert "2027-01-15" in date_str
+
+
+def test_eccezione_altra_frazione_non_applicata(conn):
+    fid = _frazione(conn)
+    altro = _frazione(conn, "Vetro")
+    services.add_ricorrenza(conn, {
+        "frazione_id": fid, "tipo": "settimanale", "giorni_settimana": "4",
+    })
+    # eccezioni su data diversa e su frazione diversa: nessun effetto
+    services.add_eccezione(conn, {"data": "2026-06-18", "salta": True})
+    services.add_eccezione(conn, {
+        "data": "2026-06-11", "frazione_id": altro, "salta": True,
+    })
+    out = services.prossime_raccolte(conn, da=date(2026, 6, 10), giorni=7)
+    assert "2026-06-11" in [r["data"] for r in out]
+
+
+def test_eccezione_sposta_fuori_finestra(conn):
+    fid = _frazione(conn)
+    services.add_ricorrenza(conn, {
+        "frazione_id": fid, "tipo": "settimanale", "giorni_settimana": "4",
+    })
+    services.add_eccezione(conn, {
+        "data": "2026-06-11", "frazione_id": fid, "salta": False,
+        "sposta_a": "2026-08-01",
+    })
+    out = services.prossime_raccolte(conn, da=date(2026, 6, 10), giorni=3)
+    assert out == []
+
+
+def test_frazione_disattivata_esclusa(conn):
+    fid = services.add_frazione(conn, {"nome": "Vetro", "attiva": False})
+    services.add_ricorrenza(conn, {
+        "frazione_id": fid, "tipo": "settimanale", "giorni_settimana": "4",
+    })
+    out = services.prossime_raccolte(conn, da=date(2026, 6, 10), giorni=7)
+    assert out == []
+
+
+def test_dedup_stessa_frazione_stessa_data(conn):
+    fid = _frazione(conn)
+    for _ in range(2):  # due ricorrenze che producono la stessa data
+        services.add_ricorrenza(conn, {
+            "frazione_id": fid, "tipo": "settimanale", "giorni_settimana": "4",
+        })
+    out = services.prossime_raccolte(conn, da=date(2026, 6, 10), giorni=3)
+    assert [r["data"] for r in out] == ["2026-06-11"]
+
+
+def test_promemoria_frazione_senza_raccolta_vicina(conn):
+    fid = _frazione(conn)
+    vetro = _frazione(conn, "Vetro")
+    # raccolta imminente solo per Umido; promemoria attivo solo su Vetro
+    services.add_ricorrenza(conn, {
+        "frazione_id": fid, "tipo": "settimanale", "giorni_settimana": "4",
+    })
+    services.add_promemoria(conn, {"frazione_id": vetro, "anticipo_ore": 24})
+    out = services.promemoria_da_inviare(conn, now=datetime(2026, 6, 10, 18, 0))
+    assert out == []

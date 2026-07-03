@@ -7,6 +7,7 @@ ISO ``YYYY-MM-DD``; ``now`` per i promemoria e' un ``datetime`` locale.
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Callable
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -296,6 +297,80 @@ def _parse_giorni(csv: str | None) -> list[int]:
     return [int(g) for g in csv.split(",") if g.strip()]
 
 
+def _espandi_lista_date(
+    ric: dict, da: date, a: date, in_validita: Callable[[date], bool]
+) -> list[date]:
+    """Espande una ricorrenza ``lista_date`` nella finestra [da, a]."""
+    out: list[date] = []
+    for s in (ric.get("date_extra") or "").split(","):
+        s = s.strip()
+        if not s:
+            continue
+        d = date.fromisoformat(s)
+        if da <= d <= a and in_validita(d):
+            out.append(d)
+    return out
+
+
+def _primo_giorno_mese_successivo(cursor: date) -> date:
+    """Primo giorno del mese successivo a ``cursor``."""
+    if cursor.month == 12:
+        return cursor.replace(year=cursor.year + 1, month=1)
+    return cursor.replace(month=cursor.month + 1)
+
+
+def _espandi_mensile(
+    ric: dict, da: date, a: date, in_validita: Callable[[date], bool]
+) -> list[date]:
+    """Espande una ricorrenza ``mensile`` nella finestra [da, a]."""
+    giorno = int(ric["giorno_mese"])
+    out: list[date] = []
+    cursor = da.replace(day=1)
+    while cursor <= a:
+        try:
+            cand = cursor.replace(day=giorno)
+        except ValueError:
+            cand = None
+        if cand is not None and da <= cand <= a and in_validita(cand):
+            out.append(cand)
+        cursor = _primo_giorno_mese_successivo(cursor)
+    return sorted(set(out))
+
+
+def _cade_nella_settimana(tipo: str, d: date, valido_da: date | None) -> bool:
+    """True se ``d`` (gia' nel giorno giusto della settimana) ricorre per ``tipo``."""
+    if tipo == "settimanale":
+        return True
+    if tipo != "quindicinale" or valido_da is None:
+        return False
+    # parita': numero di settimane intere tra ancora e d deve essere pari.
+    delta_giorni = (d - valido_da).days
+    return delta_giorni >= 0 and (delta_giorni // 7) % 2 == 0
+
+
+def _espandi_settimanale(
+    ric: dict,
+    tipo: str,
+    valido_da: date | None,
+    da: date,
+    a: date,
+    in_validita: Callable[[date], bool],
+) -> list[date]:
+    """Espande una ricorrenza ``settimanale``/``quindicinale`` in [da, a]."""
+    giorni = _parse_giorni(ric.get("giorni_settimana"))
+    out: list[date] = []
+    d = da
+    while d <= a:
+        if (
+            d.isoweekday() in giorni
+            and in_validita(d)
+            and _cade_nella_settimana(tipo, d, valido_da)
+        ):
+            out.append(d)
+        d += timedelta(days=1)
+    return out
+
+
 def _espandi_ricorrenza(ric: dict, da: date, a: date) -> list[date]:
     """Espande una singola ricorrenza in date concrete nella finestra [da, a]."""
     tipo = ric["tipo"]
@@ -309,48 +384,11 @@ def _espandi_ricorrenza(ric: dict, da: date, a: date) -> list[date]:
             return False
         return True
 
-    out: list[date] = []
-
     if tipo == "lista_date":
-        for s in (ric.get("date_extra") or "").split(","):
-            s = s.strip()
-            if not s:
-                continue
-            d = date.fromisoformat(s)
-            if da <= d <= a and _in_validita(d):
-                out.append(d)
-        return out
-
+        return _espandi_lista_date(ric, da, a, _in_validita)
     if tipo == "mensile":
-        giorno = int(ric["giorno_mese"])
-        cursor = da.replace(day=1)
-        while cursor <= a:
-            try:
-                cand = cursor.replace(day=giorno)
-            except ValueError:
-                cand = None
-            if cand is not None and da <= cand <= a and _in_validita(cand):
-                out.append(cand)
-            if cursor.month == 12:
-                cursor = cursor.replace(year=cursor.year + 1, month=1)
-            else:
-                cursor = cursor.replace(month=cursor.month + 1)
-        return sorted(set(out))
-
-    # settimanale / quindicinale
-    giorni = _parse_giorni(ric.get("giorni_settimana"))
-    d = da
-    while d <= a:
-        if d.isoweekday() in giorni and _in_validita(d):
-            if tipo == "settimanale":
-                out.append(d)
-            elif tipo == "quindicinale" and valido_da is not None:
-                # parita': numero di settimane intere tra ancora e d deve essere pari.
-                delta_giorni = (d - valido_da).days
-                if delta_giorni >= 0 and (delta_giorni // 7) % 2 == 0:
-                    out.append(d)
-        d += timedelta(days=1)
-    return out
+        return _espandi_mensile(ric, da, a, _in_validita)
+    return _espandi_settimanale(ric, tipo, valido_da, da, a, _in_validita)
 
 
 def _applica_eccezioni(d: date, fid: int, eccezioni: list[dict]) -> date | None:

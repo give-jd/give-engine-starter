@@ -1,10 +1,14 @@
 /* Layout 1 — Europass: banda blu istituzionale, etichette sezione a sinistra, griglia QCER */
-.cv--europass { font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; color: #111; padding: 0 0 10mm; }
+.cv--europass {
+  font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; color: #111; padding: 0 0 10mm;
+  display: flex; flex-direction: column;
+}
 
 .cv--europass .cv-header {
   background: #1a5fb4; color: #fff;
   padding: 10mm 12mm; display: grid;
   grid-template-columns: auto 1fr; gap: 8mm; align-items: center;
+  order: 0;
 }
 .cv--europass .cv-photo {
   width: 35mm; height: 45mm; object-fit: cover;
@@ -17,8 +21,6 @@
 
 /* corpo: stile Europass classico — etichetta sezione a sinistra, contenuto a destra.
    Ordine canonico: prima main (profilo/esperienze/istruzione), poi side (competenze). */
-.cv--europass { display: flex; flex-direction: column; }
-.cv--europass .cv-header { order: 0; }
 .cv--europass .cv-main { order: 1; }
 .cv--europass .cv-side { order: 2; }
 .cv--europass .cv-side, .cv--europass .cv-main { display: block; padding: 0 12mm; }

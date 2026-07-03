@@ -49,6 +49,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CORE_DIR = Path(__file__).resolve().parent
 TEMPLATES_DIR = CORE_DIR / "templates"
 RECIPES_DIR = CORE_DIR / "recipes"
+RECIPE_MANIFEST = "recipe.yaml"
 LOGS_DIR = CORE_DIR / "logs"
 LOGS_DIR.mkdir(exist_ok=True)
 FALLBACK_LOG = LOGS_DIR / "browser_fallback.log"
@@ -118,13 +119,13 @@ def _ensure_running(slug: str, port: Optional[int]) -> int:
     if not _port_available("127.0.0.1", port):
         return port
 
-    report = _ready_app_report(slug)
+    report = _reopen_report(slug)
     report["porta_locale"] = port
     _spawn_app(report)
     _mark_built(slug)
     installed_registry.register_installed(
         slug, port=port, version=(str(data.get("versione")) if data.get("versione") else None),
-        output_dir=report["output_dir"],
+        output_dir=report["output_dir"], expose_lan=report.get("expose_lan"),
     )
     return port
 
@@ -141,7 +142,7 @@ def _list_recipes(filter_tier: Optional[str] = None) -> list[dict]:
     except Exception:
         built_set = set()
     for recipe_dir in sorted(RECIPES_DIR.iterdir()):
-        yaml_path = recipe_dir / "recipe.yaml"
+        yaml_path = recipe_dir / RECIPE_MANIFEST
         if not yaml_path.exists():
             continue
         data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
@@ -200,17 +201,18 @@ def _mark_built(recipe_id: str) -> None:
     """Segna una ricetta come 'già costruita' (per la CTA Avvia in Cabina)."""
     try:
         from core import system as _sys
-        built = list(_sys.get_pref("built_recipes", []) or [])
-        if recipe_id not in built:
-            built.append(recipe_id)
-            _sys.set_pref("built_recipes", built)
+        with _sys.prefs_transaction():
+            built = list(_sys.get_pref("built_recipes", []) or [])
+            if recipe_id not in built:
+                built.append(recipe_id)
+                _sys.set_pref("built_recipes", built)
     except Exception:
         pass
 
 
 def _recipe_yaml(recipe_id: str) -> dict:
     """Leggi recipe.yaml di una ricetta (dict vuoto se mancante/illeggibile)."""
-    path = RECIPES_DIR / recipe_id / "recipe.yaml"
+    path = RECIPES_DIR / recipe_id / RECIPE_MANIFEST
     if not path.exists():
         return {}
     try:
@@ -251,6 +253,34 @@ def _ready_app_report(recipe_id: str) -> dict:
         "expose_lan": _sys.expose_lan_pref(),
         "recipe_id": recipe_id,
     }
+
+
+def _reopen_report(recipe_id: str) -> dict:
+    """Report per riaprire un'app già installata (app ferma, porta libera).
+
+    Le ricette "generator" (spese-casalinghe, ...) generano l'app in una dir
+    utente e ricordano al build la scelta "usa da smartphone" (``expose_lan``,
+    dalla risposta q1 del wizard). Rigenerare il report da zero con
+    ``_ready_app_report`` la perderebbe — punterebbe alla dir template e
+    userebbe la pref globale — spegnendo l'accesso LAN a ogni riavvio. Qui
+    riusiamo la riga di registro salvata al build; fallback a ready-app se
+    assente (ricette non-generator, o installate prima di questo campo).
+    """
+    from core import installed_registry
+    from core import system as _sys
+    row = installed_registry.get_row(recipe_id)
+    if row and row.get("output_dir") and _is_generator_recipe(recipe_id):
+        stored = row.get("expose_lan")
+        # None = install pre-fix (scelta wizard non registrata): ripiega sulla
+        # pref globale, così chi la usava come workaround non regredisce.
+        expose = _sys.expose_lan_pref() if stored is None else bool(stored)
+        return {
+            "output_dir": row["output_dir"],
+            "porta_locale": int(row.get("porta") or _recipe_yaml(recipe_id).get("porta_locale", 8501)),
+            "expose_lan": expose,
+            "recipe_id": recipe_id,
+        }
+    return _ready_app_report(recipe_id)
 
 
 def _load_ui_states(recipe_id: str) -> list[dict]:
@@ -345,6 +375,94 @@ def _parse_accepted_soft(raw: Any, proposals: list[dict]) -> list[str]:
     return [s for s in dict.fromkeys(items) if s in selectable]
 
 
+def _build_report(recipe_id: str, answers: dict[str, str]) -> dict:
+    """Produce the build report: run the inject module or use the ready-app path."""
+    if _is_generator_recipe(recipe_id):
+        inject_mod = _load_inject_module(recipe_id)
+        return inject_mod.build(answers=answers)
+    return _ready_app_report(recipe_id)
+
+
+def _spawn_and_register(recipe_id: str, report: dict) -> dict:
+    """Spawn the recipe app, mark it built and register the install (best-effort).
+
+    Returns:
+        The spawn info dict (contains the app URL).
+    """
+    spawn_info = _spawn_app(report)
+    _mark_built(recipe_id)
+    try:
+        from core import installed_registry
+        installed_registry.register_installed(
+            recipe_id,
+            port=int(report.get("porta_locale", 0)) or None,
+            version=str(_recipe_yaml(recipe_id).get("versione", "")) or None,
+            output_dir=report.get("output_dir"),
+            expose_lan=report.get("expose_lan"),
+        )
+    except Exception:
+        pass
+    return spawn_info
+
+
+async def _ask_dep_question(
+    ws: WebSocket,
+    session: "BuildSession",
+    slug: str,
+    entry: dict,
+    sub_answers: dict[str, str],
+) -> bool:
+    """Ask one namespaced human-in-loop question for dependency ``slug``.
+
+    Returns:
+        True if answered in time, False on timeout (error already sent).
+    """
+    base_qid = entry.get("id_domanda", "q?")
+    qid = f"{slug}::{base_qid}"
+    session.answer_events[qid] = asyncio.Event()
+    payload = dict(entry)
+    payload["id_domanda"] = qid
+    payload["dipendenza_slug"] = slug
+    await ws.send_json(payload)
+    try:
+        await asyncio.wait_for(session.answer_events[qid].wait(), timeout=120)
+    except asyncio.TimeoutError:
+        await ws.send_json({
+            "stato": "errore",
+            "messaggio": f"Nessuna risposta per la dipendenza {slug} in 2 minuti, interrompo.",
+        })
+        return False
+    sub_answers[base_qid] = session.answers.get(qid, "")
+    return True
+
+
+async def _deliver_dependency(
+    ws: WebSocket, slug: str, sub_answers: dict[str, str]
+) -> bool:
+    """Build, spawn and register dependency ``slug``, notifying the UI.
+
+    Returns:
+        True on success, False on failure (error already sent).
+    """
+    try:
+        report = _build_report(slug, sub_answers)
+        spawn_info = _spawn_and_register(slug, report)
+        await ws.send_json({
+            "stato": "avanzamento",
+            "messaggio": f"Dipendenza «{slug}» installata.",
+            "percentuale": 100,
+            "dipendenza_slug": slug,
+            "link": spawn_info["url"],
+        })
+    except Exception as e:  # noqa: BLE001 — non propagare alla UI
+        await ws.send_json({
+            "stato": "errore",
+            "messaggio": f"Errore installando la dipendenza {slug}: {e}",
+        })
+        return False
+    return True
+
+
 async def _replay_states_for(ws: WebSocket, session: "BuildSession", slug: str) -> bool:
     """Esegue la sub-build di una dipendenza ``slug`` (wizard concatenato).
 
@@ -371,57 +489,12 @@ async def _replay_states_for(ws: WebSocket, session: "BuildSession", slug: str) 
     for entry in states:
         stato = entry.get("stato")
         if stato == "human_in_loop":
-            base_qid = entry.get("id_domanda", "q?")
-            qid = f"{slug}::{base_qid}"
-            session.answer_events[qid] = asyncio.Event()
-            payload = dict(entry)
-            payload["id_domanda"] = qid
-            payload["dipendenza_slug"] = slug
-            await ws.send_json(payload)
-            try:
-                await asyncio.wait_for(session.answer_events[qid].wait(), timeout=120)
-            except asyncio.TimeoutError:
-                await ws.send_json({
-                    "stato": "errore",
-                    "messaggio": f"Nessuna risposta per la dipendenza {slug} in 2 minuti, interrompo.",
-                })
+            if not await _ask_dep_question(ws, session, slug, entry, sub_answers):
                 return False
-            sub_answers[base_qid] = session.answers.get(qid, "")
             continue
 
         if stato == "consegna":
-            try:
-                if _is_generator_recipe(slug):
-                    inject_mod = _load_inject_module(slug)
-                    report = inject_mod.build(answers=sub_answers)
-                else:
-                    report = _ready_app_report(slug)
-                spawn_info = _spawn_app(report)
-                _mark_built(slug)
-                try:
-                    from core import installed_registry
-                    installed_registry.register_installed(
-                        slug,
-                        port=int(report.get("porta_locale", 0)) or None,
-                        version=str(_recipe_yaml(slug).get("versione", "")) or None,
-                        output_dir=report.get("output_dir"),
-                    )
-                except Exception:
-                    pass
-                await ws.send_json({
-                    "stato": "avanzamento",
-                    "messaggio": f"Dipendenza «{slug}» installata.",
-                    "percentuale": 100,
-                    "dipendenza_slug": slug,
-                    "link": spawn_info["url"],
-                })
-            except Exception as e:  # noqa: BLE001 — non propagare alla UI
-                await ws.send_json({
-                    "stato": "errore",
-                    "messaggio": f"Errore installando la dipendenza {slug}: {e}",
-                })
-                return False
-            return True
+            return await _deliver_dependency(ws, slug, sub_answers)
 
         payload = dict(entry)
         payload["dipendenza_slug"] = slug
@@ -583,7 +656,7 @@ def create_app() -> FastAPI:
         from core import installed_registry
         return installed_registry.list_installed()
 
-    @app.get("/open/{slug}")
+    @app.get("/open/{slug}", responses={502: {"description": "Recipe failed to start"}})
     async def open_recipe(slug: str):
         """Launcher Cabina: apre una ricetta (avviandola se serve).
 
@@ -770,7 +843,7 @@ def create_app() -> FastAPI:
             "has_any": bool(app_sha) or bool(recipe_updates),
         }
 
-    @app.post("/update")
+    @app.post("/update", responses={403: {"description": "Request not allowed from this client or origin"}})
     async def do_update(request: Request) -> dict:
         # SICUREZZA — due minacce distinte, due controlli:
         #
@@ -882,7 +955,7 @@ def create_app() -> FastAPI:
         except Exception:
             return {"ok": False}
 
-    @app.post("/system/byok")
+    @app.post("/system/byok", responses={400: {"description": "Missing or empty API key"}})
     async def system_byok_save(body: dict) -> dict:
         """Salva la chiave API Anthropic dell'utente in locale (mai inviata a Gi.Ve).
 
@@ -939,7 +1012,7 @@ def create_app() -> FastAPI:
     # --- Build kickoff ---
     @app.post("/build/{recipe_id}")
     async def start_build(recipe_id: str) -> dict:
-        if not (RECIPES_DIR / recipe_id / "recipe.yaml").exists():
+        if not (RECIPES_DIR / recipe_id / RECIPE_MANIFEST).exists():
             raise HTTPException(404, f"Recipe '{recipe_id}' not found")
         session = BuildSession(recipe_id)
         BUILDS[session.id] = session
@@ -1002,67 +1075,127 @@ def create_app() -> FastAPI:
 
 # ---- Build streaming logic -------------------------------------------------
 
-async def _run_build_stream(ws: WebSocket, session: BuildSession) -> None:
-    # --- Preambolo dipendenze (Fase 2, §4.6) ---------------------------------
-    # Difensivo: se la pianificazione non è disponibile (modulo/grafo assenti)
-    # la build prosegue identica a com'era prima.
+async def _collect_soft_accepted(ws: WebSocket, session: BuildSession, plan: Any) -> list[str]:
+    """Send the soft-dependency proposal and collect the accepted slugs.
+
+    On timeout falls back to the preselected proposals only.
+    """
+    qid = "__deps_proposta__"
+    session.answer_events[qid] = asyncio.Event()
+    await ws.send_json({
+        "stato": "proposta_dipendenze",
+        "id_domanda": qid,
+        "messaggio": "Vuoi installare anche queste ricette collegate?",
+        "proposte": plan.proposals,
+        "link_pricing": _pricing_url(),
+    })
+    try:
+        await asyncio.wait_for(session.answer_events[qid].wait(), timeout=120)
+    except asyncio.TimeoutError:
+        # Nessuna risposta → procedi con le sole preselezionate.
+        return [p["slug"] for p in plan.proposals if p.get("preselected")]
+    raw = session.answers.get(qid)
+    return _parse_accepted_soft(raw, plan.proposals)
+
+
+def _finalize_deps_queue(plan: Any, accepted: list[str], graph: Any) -> list[str]:
+    """Compute the final dependency queue (required + accepted soft)."""
+    try:
+        from core import build_deps
+        return build_deps.finalize_queue(plan.required_queue, accepted, graph=graph)
+    except Exception:
+        return list(plan.required_queue)
+
+
+async def _run_deps_preamble(ws: WebSocket, session: BuildSession) -> bool:
+    """Dependency preamble before the main build (Fase 2, §4.6).
+
+    Difensivo: se la pianificazione non è disponibile (modulo/grafo assenti)
+    la build prosegue identica a com'era prima.
+
+    Returns:
+        True to continue with the main build, False to abort.
+    """
     planned = _build_deps_plan(session.recipe_id)
-    if planned is not None:
-        plan, graph = planned
+    if planned is None:
+        return True
+    plan, graph = planned
 
-        # 1) Blocco: una required non coperta dalla licenza → stop senza build.
-        if plan.blocked:
-            await ws.send_json({
-                "stato": "bloccato",
-                "messaggio": (
-                    "Questa ricetta richiede una o più ricette non incluse nel "
-                    "tuo piano: " + ", ".join(plan.blocking_slugs) + "."
-                ),
-                "blocking_slugs": plan.blocking_slugs,
-                "link_pricing": _pricing_url(),
-            })
-            return
+    # 1) Blocco: una required non coperta dalla licenza → stop senza build.
+    if plan.blocked:
+        await ws.send_json({
+            "stato": "bloccato",
+            "messaggio": (
+                "Questa ricetta richiede una o più ricette non incluse nel "
+                "tuo piano: " + ", ".join(plan.blocking_slugs) + "."
+            ),
+            "blocking_slugs": plan.blocking_slugs,
+            "link_pricing": _pricing_url(),
+        })
+        return False
 
-        # 2) Proposta soft (recommended preselezionate, optional no, upsell
-        #    per le non coperte) → human_in_loop, risposta via /answer.
-        accepted: list[str] = []
-        if plan.proposals:
-            qid = "__deps_proposta__"
-            session.answer_events[qid] = asyncio.Event()
-            await ws.send_json({
-                "stato": "proposta_dipendenze",
-                "id_domanda": qid,
-                "messaggio": "Vuoi installare anche queste ricette collegate?",
-                "proposte": plan.proposals,
-                "link_pricing": _pricing_url(),
-            })
-            try:
-                await asyncio.wait_for(session.answer_events[qid].wait(), timeout=120)
-            except asyncio.TimeoutError:
-                # Nessuna risposta → procedi con le sole preselezionate.
-                accepted = [p["slug"] for p in plan.proposals if p.get("preselected")]
-            else:
-                raw = session.answers.get(qid)
-                accepted = _parse_accepted_soft(raw, plan.proposals)
+    # 2) Proposta soft (recommended preselezionate, optional no, upsell
+    #    per le non coperte) → human_in_loop, risposta via /answer.
+    accepted: list[str] = []
+    if plan.proposals:
+        accepted = await _collect_soft_accepted(ws, session, plan)
 
-        # 3) Coda finale (required + soft accettate), poi sub-build di ciascuna.
-        queue = []
-        try:
-            from core import build_deps
-            queue = build_deps.finalize_queue(plan.required_queue, accepted, graph=graph)
-        except Exception:
-            queue = list(plan.required_queue)
+    # 3) Coda finale (required + soft accettate), poi sub-build di ciascuna.
+    queue = _finalize_deps_queue(plan, accepted, graph)
+    if not queue:
+        return True
+    await ws.send_json({
+        "stato": "risoluzione_dipendenze",
+        "messaggio": "Installo prima le ricette collegate…",
+        "coda": queue,
+    })
+    for dep_slug in queue:
+        if not await _replay_states_for(ws, session, dep_slug):
+            return False
+    return True
 
-        if queue:
-            await ws.send_json({
-                "stato": "risoluzione_dipendenze",
-                "messaggio": "Installo prima le ricette collegate…",
-                "coda": queue,
-            })
-            for dep_slug in queue:
-                ok = await _replay_states_for(ws, session, dep_slug)
-                if not ok:
-                    return
+
+async def _await_main_answer(ws: WebSocket, session: BuildSession, entry: dict) -> bool:
+    """Ask one human-in-loop question of the main build.
+
+    Returns:
+        True if answered in time, False on timeout (error already sent).
+    """
+    qid = entry.get("id_domanda", "q?")
+    session.answer_events[qid] = asyncio.Event()
+    await ws.send_json(entry)
+    try:
+        await asyncio.wait_for(session.answer_events[qid].wait(), timeout=120)
+    except asyncio.TimeoutError:
+        await ws.send_json({
+            "stato": "errore",
+            "messaggio": "Nessuna risposta ricevuta in 2 minuti, interrompo.",
+        })
+        return False
+    return True
+
+
+async def _deliver_main_build(ws: WebSocket, session: BuildSession, entry: dict) -> None:
+    """Build, spawn and register the main recipe, sending the final payload."""
+    try:
+        # ready app: lancia direttamente il suo app.py, niente inject
+        session.report = _build_report(session.recipe_id, session.answers)
+        spawn_info = _spawn_and_register(session.recipe_id, session.report)
+        payload = dict(entry)
+        payload["link"] = spawn_info["url"]
+        payload["output_dir"] = session.report["output_dir"]
+        payload["recipe_id"] = session.recipe_id
+        await ws.send_json(payload)
+    except Exception as e:
+        await ws.send_json({
+            "stato": "errore",
+            "messaggio": f"Errore durante la consegna: {e}",
+        })
+
+
+async def _run_build_stream(ws: WebSocket, session: BuildSession) -> None:
+    if not await _run_deps_preamble(ws, session):
+        return
 
     states = _load_ui_states(session.recipe_id)
 
@@ -1070,49 +1203,12 @@ async def _run_build_stream(ws: WebSocket, session: BuildSession) -> None:
         stato = entry.get("stato")
 
         if stato == "human_in_loop":
-            qid = entry.get("id_domanda", "q?")
-            session.answer_events[qid] = asyncio.Event()
-            await ws.send_json(entry)
-            try:
-                await asyncio.wait_for(session.answer_events[qid].wait(), timeout=120)
-            except asyncio.TimeoutError:
-                await ws.send_json({
-                    "stato": "errore",
-                    "messaggio": "Nessuna risposta ricevuta in 2 minuti, interrompo.",
-                })
+            if not await _await_main_answer(ws, session, entry):
                 return
             continue
 
         if stato == "consegna":
-            try:
-                if _is_generator_recipe(session.recipe_id):
-                    inject_mod = _load_inject_module(session.recipe_id)
-                    session.report = inject_mod.build(answers=session.answers)
-                else:
-                    # ready app: lancia direttamente il suo app.py, niente inject
-                    session.report = _ready_app_report(session.recipe_id)
-                spawn_info = _spawn_app(session.report)
-                _mark_built(session.recipe_id)
-                try:
-                    from core import installed_registry
-                    installed_registry.register_installed(
-                        session.recipe_id,
-                        port=int(session.report.get("porta_locale", 0)) or None,
-                        version=str(_recipe_yaml(session.recipe_id).get("versione", "")) or None,
-                        output_dir=session.report.get("output_dir"),
-                    )
-                except Exception:
-                    pass
-                payload = dict(entry)
-                payload["link"] = spawn_info["url"]
-                payload["output_dir"] = session.report["output_dir"]
-                payload["recipe_id"] = session.recipe_id
-                await ws.send_json(payload)
-            except Exception as e:
-                await ws.send_json({
-                    "stato": "errore",
-                    "messaggio": f"Errore durante la consegna: {e}",
-                })
+            await _deliver_main_build(ws, session, entry)
             return
 
         # Normal "avanzamento" / "caveman"
@@ -1131,6 +1227,57 @@ def _state_delay(entry: dict) -> float:
 
 # ---- Spawned app process management ----------------------------------------
 
+def _terminate_port_listeners_psutil(port: int) -> bool:
+    """Terminate every process listening on ``port`` via psutil.
+
+    Raises if psutil is unavailable or the scan fails (caller falls back).
+
+    Returns:
+        True if at least one process was terminated.
+    """
+    import psutil  # type: ignore
+    killed = False
+    for c in psutil.net_connections(kind="inet"):
+        if c.laddr and c.laddr.port == port and c.status == psutil.CONN_LISTEN and c.pid:
+            try:
+                psutil.Process(c.pid).terminate()
+                killed = True
+            except Exception:
+                pass
+    return killed
+
+
+def _terminate_port_listeners_cli(port: int) -> bool:
+    """Terminate listeners on ``port`` via fuser/lsof (psutil fallback).
+
+    Returns:
+        True if one of the tools ran successfully.
+    """
+    for tool in (["fuser", "-k", f"{port}/tcp"],
+                 ["bash", "-c", f"lsof -ti tcp:{port} | xargs -r kill"]):
+        try:
+            subprocess.run(tool, stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL, timeout=5)
+            return True
+        except Exception:
+            continue
+    return False
+
+
+def _wait_for_port_release(host: str, port: int, timeout_s: float) -> bool:
+    """Poll until the port is available or the timeout expires.
+
+    Returns:
+        True if the port became available in time.
+    """
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        if _port_available(host, port):
+            return True
+        time.sleep(0.2)
+    return False
+
+
 def _free_port(host: str, port: int, timeout_s: float = 3.0) -> None:
     """Se la porta è occupata, termina chi è in ascolto e attende il rilascio.
 
@@ -1141,33 +1288,46 @@ def _free_port(host: str, port: int, timeout_s: float = 3.0) -> None:
     """
     if _port_available(host, port):
         return
-    killed = False
     try:
-        import psutil  # type: ignore
-        for c in psutil.net_connections(kind="inet"):
-            if c.laddr and c.laddr.port == port and c.status == psutil.CONN_LISTEN and c.pid:
-                try:
-                    psutil.Process(c.pid).terminate()
-                    killed = True
-                except Exception:
-                    pass
+        killed = _terminate_port_listeners_psutil(port)
     except Exception:
-        for tool in (["fuser", "-k", f"{port}/tcp"],
-                     ["bash", "-c", f"lsof -ti tcp:{port} | xargs -r kill"]):
-            try:
-                subprocess.run(tool, stdout=subprocess.DEVNULL,
-                               stderr=subprocess.DEVNULL, timeout=5)
-                killed = True
-                break
-            except Exception:
-                continue
-    if not killed:
-        return
-    deadline = time.monotonic() + timeout_s
-    while time.monotonic() < deadline:
-        if _port_available(host, port):
-            return
-        time.sleep(0.2)
+        killed = _terminate_port_listeners_cli(port)
+    if killed:
+        _wait_for_port_release(host, port, timeout_s)
+
+
+def _orchestrator_listeners(port: int) -> list[Any]:
+    """Return psutil Processes of OTHER ``core.orchestrator`` instances on ``port``."""
+    import psutil  # type: ignore
+    mypid = os.getpid()
+    procs: list[Any] = []
+    for c in psutil.net_connections(kind="inet"):
+        if not (c.laddr and c.laddr.port == port
+                and c.status == psutil.CONN_LISTEN and c.pid):
+            continue
+        if c.pid == mypid:
+            continue
+        try:
+            proc = psutil.Process(c.pid)
+            cmdline = " ".join(proc.cmdline())
+        except Exception:
+            continue
+        if "core.orchestrator" not in cmdline:
+            continue  # processo estraneo: NON lo tocchiamo
+        procs.append(proc)
+    return procs
+
+
+def _terminate_gracefully(proc: Any, timeout_s: float) -> None:
+    """Terminate ``proc``, escalating to kill if it does not exit in time."""
+    try:
+        proc.terminate()
+        proc.wait(timeout=timeout_s)
+    except Exception:
+        try:
+            proc.kill()
+        except Exception:
+            pass
 
 
 def _free_cabina_port(host: str, port: int, timeout_s: float = 4.0) -> bool:
@@ -1184,36 +1344,13 @@ def _free_cabina_port(host: str, port: int, timeout_s: float = 4.0) -> bool:
     if _port_available(host, port):
         return True
     try:
-        import psutil  # type: ignore
+        import psutil  # type: ignore  # noqa: F401 — availability probe only
     except Exception:
         return False
-    mypid = os.getpid()
-    for c in psutil.net_connections(kind="inet"):
-        if not (c.laddr and c.laddr.port == port
-                and c.status == psutil.CONN_LISTEN and c.pid):
-            continue
-        if c.pid == mypid:
-            continue
-        try:
-            proc = psutil.Process(c.pid)
-            cmdline = " ".join(proc.cmdline())
-        except Exception:
-            continue
-        if "core.orchestrator" not in cmdline:
-            continue  # processo estraneo: NON lo tocchiamo
-        try:
-            proc.terminate()
-            proc.wait(timeout=timeout_s)
-        except Exception:
-            try:
-                proc.kill()
-            except Exception:
-                pass
-    deadline = time.monotonic() + timeout_s
-    while time.monotonic() < deadline:
-        if _port_available(host, port):
-            return True
-        time.sleep(0.2)
+    for proc in _orchestrator_listeners(port):
+        _terminate_gracefully(proc, timeout_s)
+    if _wait_for_port_release(host, port, timeout_s):
+        return True
     return _port_available(host, port)
 
 
@@ -1333,6 +1470,90 @@ def _install_signal_handlers() -> None:
     signal.signal(signal.SIGTERM, _handler)
 
 
+def _maybe_self_update(args: argparse.Namespace) -> None:
+    """Auto-update at boot, re-executing with the same CLI flags (best-effort).
+
+    No-op se offline / già aggiornato / GIVE_NO_UPDATE=1.
+    """
+    try:
+        from core import updater
+        reexec = []
+        if args.host:
+            reexec += ["--host", args.host]
+        reexec += ["--port", str(args.port)]
+        if args.no_browser:
+            reexec.append("--no-browser")
+        updater.maybe_self_update(args.updated, reexec)
+    except Exception:
+        pass
+
+
+def _resolve_default_host() -> str:
+    """Return the bind host honouring the persisted "expose LAN" preference."""
+    try:
+        from core import system as _sys
+        return "0.0.0.0" if _sys.expose_lan_pref() else DEFAULT_HOST
+    except Exception:
+        return DEFAULT_HOST
+
+
+def _ensure_cabina_port(host: str, port: int) -> bool:
+    """Make sure the Cabina port is usable, reporting to the console.
+
+    Porta occupata: prova a liberarla SOLO se è una nostra istanza Cabina
+    rimasta appesa (verifica cmdline). Processi estranei non vengono toccati.
+
+    Returns:
+        True if the port is usable, False if taken by a foreign process.
+    """
+    if _port_available(host, port):
+        return True
+    if _free_cabina_port(host, port):
+        Console().print(Panel(
+            f"Trovata un'istanza precedente sulla porta {port}: terminata, riparto.",
+            border_style="yellow",
+        ))
+        return True
+    Console().print(Panel(
+        f"La porta {port} è già in uso da un altro programma. "
+        "Chiudilo o cambia porta con --port.",
+        border_style="red",
+    ))
+    return False
+
+
+def _fire_boot_background_tasks(url: str) -> None:
+    """Kick off best-effort boot side tasks (pref, catalog check, AI detector)."""
+    # Memorizza l'URL della Cabina così l'helper dependency_bar delle app ricetta
+    # può puntare i link /open/<slug> alla porta giusta (Fase 3, spec §4.7).
+    try:
+        from core import system as _sys
+        _sys.set_pref("cabina_url", url)
+    except Exception:
+        pass
+
+    # Fire the catalog manifest fetch as soon as we know we'll boot. Bounded
+    # 3s timeout inside the checker; runs in its own daemon thread so it never
+    # blocks browser-open or uvicorn startup.
+    try:
+        from core import catalog_updates as _cu
+        _cu.checker().check_async()
+    except Exception:
+        pass
+
+    # Same pattern for the AI tooling detector: don't re-scan every boot if
+    # the cache is fresh, otherwise refresh in background.
+    try:
+        from core import ai_environment as _ai
+        _det = _ai.detector()
+        if not _det.cache_is_fresh(max_age_s=86400.0):
+            threading.Thread(
+                target=_det.refresh, name="ai-env-boot-refresh", daemon=True,
+            ).start()
+    except Exception:
+        pass
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Gi.Ve Engine — Cabina di Regia")
     parser.add_argument("--host", default=None,
@@ -1356,76 +1577,20 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 0
 
     # Auto-update all'avvio: se c'è una versione nuova, aggiorna e ri-esegue col
-    # codice aggiornato (no-op se offline / già aggiornato / GIVE_NO_UPDATE=1).
-    try:
-        from core import updater
-        reexec = []
-        if args.host:
-            reexec += ["--host", args.host]
-        reexec += ["--port", str(args.port)]
-        if args.no_browser:
-            reexec.append("--no-browser")
-        updater.maybe_self_update(args.updated, reexec)
-    except Exception:
-        pass
+    # codice aggiornato.
+    _maybe_self_update(args)
 
     # When --host is omitted, honour the persisted "expose LAN" preference so
     # the UI toggle alone is enough to flip the bind address at next start.
     if not args.host:
-        try:
-            from core import system as _sys
-            args.host = "0.0.0.0" if _sys.expose_lan_pref() else DEFAULT_HOST
-        except Exception:
-            args.host = DEFAULT_HOST
+        args.host = _resolve_default_host()
 
-    if not _port_available(args.host, args.port):
-        # Porta occupata: prova a liberarla SOLO se è una nostra istanza Cabina
-        # rimasta appesa (verifica cmdline). Processi estranei non vengono toccati.
-        if _free_cabina_port(args.host, args.port):
-            Console().print(Panel(
-                f"Trovata un'istanza precedente sulla porta {args.port}: terminata, riparto.",
-                border_style="yellow",
-            ))
-        else:
-            Console().print(Panel(
-                f"La porta {args.port} è già in uso da un altro programma. "
-                "Chiudilo o cambia porta con --port.",
-                border_style="red",
-            ))
-            return 1
+    if not _ensure_cabina_port(args.host, args.port):
+        return 1
 
     _install_signal_handlers()
     url = f"http://localhost:{args.port}"
-
-    # Memorizza l'URL della Cabina così l'helper dependency_bar delle app ricetta
-    # può puntare i link /open/<slug> alla porta giusta (Fase 3, spec §4.7).
-    try:
-        from core import system as _sys
-        _sys.set_pref("cabina_url", url)
-    except Exception:
-        pass
-
-    # Fire the catalog manifest fetch as soon as we know we'll boot. Bounded
-    # 3s timeout inside the checker; runs in its own daemon thread so it never
-    # blocks browser-open or uvicorn startup.
-    try:
-        from core import catalog_updates as _cu
-        _cu.checker().check_async()
-    except Exception:
-        pass
-
-    # Same pattern for the AI tooling detector: don't re-scan every boot if
-    # the cache is fresh, otherwise refresh in background.
-    try:
-        from core import ai_environment as _ai
-        import threading
-        _det = _ai.detector()
-        if not _det.cache_is_fresh(max_age_s=86400.0):
-            threading.Thread(
-                target=_det.refresh, name="ai-env-boot-refresh", daemon=True,
-            ).start()
-    except Exception:
-        pass
+    _fire_boot_background_tasks(url)
 
     Console().print(Panel(
         Text.from_markup(

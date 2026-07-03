@@ -416,6 +416,38 @@ class TestUiStatesFallback:
         assert rep["recipe_id"] == "bollette-watcher"
         assert isinstance(rep["porta_locale"], int)
 
+    def test_reopen_generator_honors_registry(self, monkeypatch):
+        """Riapertura di una generator app: usa expose_lan + output_dir salvati
+        al build (scelta wizard), non la pref globale né la dir template."""
+        from core import installed_registry as reg
+        monkeypatch.setattr(reg, "get_row", lambda s: {
+            "slug": s, "porta": 8501, "expose_lan": True,
+            "output_dir": "/home/u/GiveEngine_apps/spese-casalinghe",
+        })
+        # pref globale OFF: se il fix non funzionasse, expose_lan tornerebbe False
+        monkeypatch.setattr(sysmod, "expose_lan_pref", lambda: False)
+        rep = orch._reopen_report("spese-casalinghe")  # generator reale (ha inject.py)
+        assert rep["expose_lan"] is True
+        assert rep["output_dir"] == "/home/u/GiveEngine_apps/spese-casalinghe"
+
+    def test_reopen_generator_prefix_install_falls_back_to_global(self, monkeypatch):
+        """Install pre-fix (riga senza expose_lan): ripiega sulla pref globale,
+        non regredisce a False, per chi usava il toggle globale come workaround."""
+        from core import installed_registry as reg
+        monkeypatch.setattr(reg, "get_row", lambda s: {
+            "slug": s, "porta": 8501,  # niente chiave expose_lan
+            "output_dir": "/home/u/GiveEngine_apps/spese-casalinghe",
+        })
+        monkeypatch.setattr(sysmod, "expose_lan_pref", lambda: True)
+        assert orch._reopen_report("spese-casalinghe")["expose_lan"] is True
+
+    def test_reopen_ready_app_falls_back_to_global_pref(self, monkeypatch):
+        """Ready-app (nessun wizard): resta sulla pref globale + dir ricetta."""
+        monkeypatch.setattr(sysmod, "expose_lan_pref", lambda: True)
+        rep = orch._reopen_report("bollette-watcher")
+        assert rep["expose_lan"] is True
+        assert rep["output_dir"].endswith("bollette-watcher")
+
     def test_missing_everything_raises(self, tmp_path, monkeypatch):
         monkeypatch.setattr(orch, "RECIPES_DIR", tmp_path)
         (tmp_path / "ghost").mkdir()

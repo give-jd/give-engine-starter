@@ -32,7 +32,7 @@ try:
     from core.shared.notifier import is_available as _notifier_available
     from core.shared.notifier import notify_os
 except ImportError:  # pragma: no cover - degradazione
-    def notify_os(t: str, m: str) -> bool:  # type: ignore
+    def notify_os(_t: str, _m: str) -> bool:  # type: ignore
         return False
 
     def _notifier_available() -> bool:  # type: ignore
@@ -120,7 +120,7 @@ def _render_manuale(st, conn: sqlite3.Connection) -> None:
         st.success(f"Frazione '{scelta}' creata. Configura la ricorrenza ({tipo}).")
 
 
-def _render_pdf(st, conn: sqlite3.Connection) -> None:
+def _render_pdf(st, _conn: sqlite3.Connection) -> None:
     up = st.file_uploader("Carica il PDF del calendario comunale", type=["pdf"])
     if up is None:
         return
@@ -141,7 +141,7 @@ def _render_pdf(st, conn: sqlite3.Connection) -> None:
         st.write(f"- {r.frazione}: {r.tipo} {r.giorni_settimana or r.date_extra or ''}")
 
 
-def _render_ai(st, conn: sqlite3.Connection) -> None:
+def _render_ai(st, _conn: sqlite3.Connection) -> None:
     from parsers import ai_extract
 
     key = st.session_state.get("byok_key")
@@ -187,7 +187,7 @@ def render_regolamento(st, conn: sqlite3.Connection) -> None:
 # --- Tab: Impostazioni ---
 
 
-def render_impostazioni(st, conn: sqlite3.Connection) -> None:
+def render_impostazioni(st, _conn: sqlite3.Connection) -> None:
     st.subheader("Impostazioni")
     comune = st.text_input("Comune", value=st.session_state.get("comune", ""))
     if comune:

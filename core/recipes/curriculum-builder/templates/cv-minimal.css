@@ -3,10 +3,11 @@
 .cv--minimal {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 10.5pt; color: #111; padding: 14mm 16mm;
+  display: flex; flex-direction: column;
 }
 
 .cv--minimal .cv-photo { display: none; }           /* niente foto: ATS e anti-bias */
-.cv--minimal .cv-header { margin-bottom: 6mm; }
+.cv--minimal .cv-header { margin-bottom: 6mm; order: 0; }
 .cv--minimal .cv-name { font-size: 18pt; margin: 0 0 2mm; font-weight: 700; }
 .cv--minimal .cv-contacts { font-size: 9pt; color: #333; }
 .cv--minimal .cv-contact { display: inline; }
@@ -14,8 +15,6 @@
 .cv--minimal .cv-contact-label { display: none; }   /* solo valori: email, tel… parlano da sé */
 
 /* monocolonna: prima esperienze/istruzione (main), poi competenze (side) — ordine ATS */
-.cv--minimal { display: flex; flex-direction: column; }
-.cv--minimal .cv-header { order: 0; }
 .cv--minimal .cv-main { order: 1; }
 .cv--minimal .cv-side { order: 2; }
 .cv--minimal .cv-side, .cv--minimal .cv-main { display: block; }

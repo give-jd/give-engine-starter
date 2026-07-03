@@ -1,9 +1,12 @@
 /* Layout 2 — Moderno: sidebar scura + timeline, accent personalizzabile via --accent */
 .cv--moderno {
-  font-family: "Segoe UI", system-ui, sans-serif; font-size: 10.5pt; color: #1f2933;
+  font-family: "Segoe UI", system-ui, sans-serif; font-size: 10.5pt;
   display: grid; grid-template-columns: 72mm 1fr; min-height: 297mm;
   align-content: start;
-  /* colonna sinistra scura continua per tutta l'altezza */
+  /* colonna sinistra scura continua per tutta l'altezza; il colore testo
+     (#1f2933) è dichiarato sui figli su fondo bianco (.cv-main, .cv-privacy):
+     qui accoppiato al gradiente farebbe scattare un falso positivo di
+     contrasto (css:S7924), la resa è identica */
   background: linear-gradient(90deg, #1f2933 72mm, #ffffff 72mm);
 }
 
@@ -42,7 +45,7 @@
 .cv--moderno .cv-side li { margin-bottom: 1mm; }
 
 /* colonna principale: timeline */
-.cv--moderno .cv-main { grid-column: 2; padding: 2mm 10mm 10mm; }
+.cv--moderno .cv-main { grid-column: 2; padding: 2mm 10mm 10mm; color: #1f2933; }
 .cv--moderno .cv-main .cv-section-title {
   font-size: 12pt; color: #111; text-transform: uppercase; letter-spacing: 1px;
   margin: 7mm 0 3mm;
@@ -68,7 +71,7 @@
 .cv--moderno .cv-lang-compact { list-style: none; margin: 0; padding: 0; }
 .cv--moderno .cv-lang-compact li { margin-bottom: 1.2mm; }
 
-.cv--moderno .cv-privacy { grid-column: 2; margin-top: 4mm; padding: 0 10mm 10mm; }
+.cv--moderno .cv-privacy { grid-column: 2; margin-top: 4mm; padding: 0 10mm 10mm; color: #1f2933; }
 .cv--moderno .cv-privacy-text { font-size: 7.5pt; color: #6b7280; font-style: italic; }
 .cv--moderno .cv-sign-row { display: flex; justify-content: space-between; margin-top: 5mm; font-size: 9pt; }
 

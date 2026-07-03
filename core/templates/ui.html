@@ -326,7 +326,8 @@
                 ⚠ Modifica il tuo <code>~/.bash_profile</code>. Rimovibile in ogni momento da qui.
               </p>
             </div>
-            <label class="relative inline-flex items-center cursor-pointer mt-1">
+            <label for="settings-autostart-shell" class="relative inline-flex items-center cursor-pointer mt-1">
+              <span class="sr-only">Attiva avvio automatico all'accensione</span>
               <input id="settings-autostart-shell" type="checkbox" class="sr-only peer" />
               <div class="w-11 h-6 bg-white/10 rounded-full peer-checked:bg-cyan-500 transition relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition peer-checked:after:translate-x-5"></div>
             </label>
@@ -628,29 +629,11 @@
     function recipeGlyph(id) {
       let h = 0;
       const s = String(id || '');
-      for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+      for (let i = 0; i < s.length; i++) h = (h * 31 + s.codePointAt(i)) >>> 0;
       return RECIPE_GLYPHS[h % RECIPE_GLYPHS.length];
     }
 
-    async function loadRecipes() {
-      const grid = document.getElementById('recipes-grid');
-      grid.innerHTML = '<p class="text-slate-400">Carico le ricette…</p>';
-
-      // Resolve current user tier (graceful fallback to starter).
-      let userTier = 'starter';
-      try {
-        const lic = await fetch('/license/status').then(r => r.ok ? r.json() : null);
-        if (lic && lic.tier) userTier = lic.tier;
-      } catch {}
-
-      const res = await fetch('/recipes');
-      const recipes = await res.json();
-      grid.innerHTML = '';
-      if (!recipes.length) {
-        grid.innerHTML = '<p class="text-slate-400">Nessuna ricetta disponibile.</p>';
-        return;
-      }
-      const makeCard = (r, locked, built) => {
+    function makeRecipeCard(r, locked, built) {
         const glyph = recipeGlyph(r.id);
         const card = document.createElement('button');
         card.dataset.recipeId = r.id;
@@ -669,13 +652,16 @@
           ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-400/30 ml-1">🔒</span>'
           : '';
         const notInstalled = r.installed === false;
-        const cta = locked
-          ? `<p class="mt-5 text-amber-300 text-sm font-semibold">Sblocca con il Catalogo →</p>`
-          : notInstalled
-            ? `<p class="mt-5 text-violet-300 text-sm font-semibold">⤓ Aggiorna per installarla</p>`
-            : built
-              ? `<p class="mt-5 text-emerald-300 text-sm font-semibold">▶ Avvia questa app</p>`
-              : `<p class="mt-5 text-cyan-300 text-sm font-semibold">Costruisci questa app →</p>`;
+        let cta;
+        if (locked) {
+          cta = `<p class="mt-5 text-amber-300 text-sm font-semibold">Sblocca con il Catalogo →</p>`;
+        } else if (notInstalled) {
+          cta = `<p class="mt-5 text-violet-300 text-sm font-semibold">⤓ Aggiorna per installarla</p>`;
+        } else if (built) {
+          cta = `<p class="mt-5 text-emerald-300 text-sm font-semibold">▶ Avvia questa app</p>`;
+        } else {
+          cta = `<p class="mt-5 text-cyan-300 text-sm font-semibold">Costruisci questa app →</p>`;
+        }
         card.innerHTML = `
           <div class="flex items-start justify-between gap-3">
             <div class="flex items-start gap-3 min-w-0">
@@ -710,51 +696,20 @@
           startBuild(r.id);
         });
         return card;
-      };
+    }
 
-      const sectionHeading = (titolo, sotto) => {
-        const h = document.createElement('div');
-        h.className = 'col-span-full mt-2 mb-1';
-        h.innerHTML = `<h3 class="font-display text-lg font-semibold text-white">${titolo}</h3>`
-          + (sotto ? `<p class="text-xs text-slate-400 mt-0.5">${sotto}</p>` : '');
-        return h;
-      };
+    // Resolve current user tier (graceful fallback to starter).
+    async function resolveUserTier() {
+      try {
+        const lic = await fetch('/license/status').then(r => r.ok ? r.json() : null);
+        if (lic && lic.tier) return lic.tier;
+      } catch {}
+      return 'starter';
+    }
 
-      // Separa: le tue app (costruite) / pronte da costruire / bloccate (Catalogo).
-      const tue = [], daCostruire = [], bloccate = [];
-      recipes.forEach(r => {
-        if (recipeIsLocked(r.tier, userTier)) bloccate.push(r);
-        else if (r.built) tue.push(r);
-        else daCostruire.push(r);
-      });
-
-      if (tue.length) {
-        grid.appendChild(sectionHeading('▶ Le tue app', 'Già costruite — clicca per riavviarle'));
-        tue.forEach(r => grid.appendChild(makeCard(r, false, true)));
-      }
-      if (daCostruire.length) {
-        grid.appendChild(sectionHeading('🧩 Pronte da costruire', 'Incluse nel tuo piano'));
-        daCostruire.forEach(r => grid.appendChild(makeCard(r, false, false)));
-      }
-      if (bloccate.length) {
-        grid.appendChild(sectionHeading(
-          `🔒 Catalogo completo — ${bloccate.length} ricette da sbloccare`,
-          'Richiedono una license key Catalogo o All-Access'));
-        bloccate.forEach(r => grid.appendChild(makeCard(r, true, false)));
-        const banner = document.createElement('div');
-        banner.className = 'col-span-full mt-4 rounded-2xl border border-cyan-400/30 bg-gradient-to-br from-cyan-500/10 to-violet-500/10 p-6 text-center';
-        banner.innerHTML =
-          `<p class="font-display text-xl font-bold text-white">Sblocca tutte le ${bloccate.length} ricette del Catalogo</p>`
-          + `<p class="mt-1 text-sm text-slate-300">Una sola license key: tutte le ricette premium, Caveman Optimizer Pro e aggiornamenti.</p>`
-          + `<button type="button" id="lc-open-license" class="mt-4 inline-flex px-5 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold transition">Sblocca il Catalogo →</button>`
-          + `<p class="mt-2 text-[11px] text-slate-400">Apri la gestione licenza: attiva una chiave o vai ai piani sul sito.</p>`;
-        grid.appendChild(banner);
-        const openBtn = banner.querySelector('#lc-open-license');
-        if (openBtn) openBtn.addEventListener('click', () => document.getElementById('license-toggle').click());
-      }
-
-      // Mark catalog as "browsed" (used to gate the /commissioni bridge card
-      // on the next visits) and reveal the bridge card if the flag is set.
+    // Mark catalog as "browsed" (used to gate the /commissioni bridge card
+    // on the next visits) and reveal the bridge card if the flag is set.
+    function markCatalogBrowsed() {
       try {
         const browsedKey = 'catalog_browsed_at';
         if (!localStorage.getItem(browsedKey)) {
@@ -764,7 +719,9 @@
           if (b) b.classList.remove('hidden');
         }
       } catch {}
+    }
 
+    function maybeHighlightRecipe(grid) {
       // ?highlight=<id> from /novita "Provala ora →" or similar deep-links.
       const highlightId = new URLSearchParams(location.search).get('highlight');
       if (highlightId) {
@@ -784,6 +741,66 @@
           });
         }
       }
+    }
+
+    async function loadRecipes() {
+      const grid = document.getElementById('recipes-grid');
+      grid.innerHTML = '<p class="text-slate-400">Carico le ricette…</p>';
+
+      const userTier = await resolveUserTier();
+
+      const res = await fetch('/recipes');
+      const recipes = await res.json();
+      grid.innerHTML = '';
+      if (!recipes.length) {
+        grid.innerHTML = '<p class="text-slate-400">Nessuna ricetta disponibile.</p>';
+        return;
+      }
+
+      const sectionHeading = (titolo, sotto) => {
+        const h = document.createElement('div');
+        h.className = 'col-span-full mt-2 mb-1';
+        h.innerHTML = `<h3 class="font-display text-lg font-semibold text-white">${titolo}</h3>`
+          + (sotto ? `<p class="text-xs text-slate-400 mt-0.5">${sotto}</p>` : '');
+        return h;
+      };
+
+      // Separa: le tue app (costruite) / pronte da costruire / bloccate (Catalogo).
+      const tue = [], daCostruire = [], bloccate = [];
+      recipes.forEach(r => {
+        if (recipeIsLocked(r.tier, userTier)) bloccate.push(r);
+        else if (r.built) tue.push(r);
+        else daCostruire.push(r);
+      });
+
+      if (tue.length) {
+        grid.appendChild(sectionHeading('▶ Le tue app', 'Già costruite — clicca per riavviarle'));
+        tue.forEach(r => grid.appendChild(makeRecipeCard(r, false, true)));
+      }
+      if (daCostruire.length) {
+        grid.appendChild(sectionHeading('🧩 Pronte da costruire', 'Incluse nel tuo piano'));
+        daCostruire.forEach(r => grid.appendChild(makeRecipeCard(r, false, false)));
+      }
+      if (bloccate.length) {
+        grid.appendChild(sectionHeading(
+          `🔒 Catalogo completo — ${bloccate.length} ricette da sbloccare`,
+          'Richiedono una license key Catalogo o All-Access'));
+        bloccate.forEach(r => grid.appendChild(makeRecipeCard(r, true, false)));
+        const banner = document.createElement('div');
+        banner.className = 'col-span-full mt-4 rounded-2xl border border-cyan-400/30 bg-gradient-to-br from-cyan-500/10 to-violet-500/10 p-6 text-center';
+        banner.innerHTML =
+          `<p class="font-display text-xl font-bold text-white">Sblocca tutte le ${bloccate.length} ricette del Catalogo</p>`
+          + `<p class="mt-1 text-sm text-slate-300">Una sola license key: tutte le ricette premium, Caveman Optimizer Pro e aggiornamenti.</p>`
+          + `<button type="button" id="lc-open-license" class="mt-4 inline-flex px-5 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold transition">Sblocca il Catalogo →</button>`
+          + `<p class="mt-2 text-[11px] text-slate-400">Apri la gestione licenza: attiva una chiave o vai ai piani sul sito.</p>`;
+        grid.appendChild(banner);
+        const openBtn = banner.querySelector('#lc-open-license');
+        if (openBtn) openBtn.addEventListener('click', () => document.getElementById('license-toggle').click());
+      }
+
+      markCatalogBrowsed();
+
+      maybeHighlightRecipe(grid);
     }
 
     async function startBuild(recipeId) {
@@ -1350,47 +1367,27 @@
     // Consumer di GET /system/tos-status (B2-B4 LEGAL_COMPLIANCE).
     // - Modal bloccante: pending sostanziale dopo data vigore + non già accettato
     // - Banner non-bloccante: pending ordinaria OR draft in_legal_review
-    async function checkTosStatus() {
-      let tos = null;
-      try {
-        const r = await fetch('/system/tos-status');
-        if (r.ok) tos = await r.json();
-      } catch {}
-      if (!tos) return;
+    function showTosModal(tos, acceptedKey) {
+      const m = document.getElementById('tos-modal');
+      document.getElementById('tos-modal-detail').textContent =
+        `È in vigore dal ${tos.pending_effective_from} la versione ${tos.pending_version} dei Termini di Servizio. ` +
+        `Per continuare a usare Gi.Ve Engine devi confermare di averla letta e accettata.`;
+      document.getElementById('tos-modal-link').setAttribute(
+        'href', tos.notice_url || 'https://engine.givegroup.it/legal/termini.html');
+      const cb = document.getElementById('tos-modal-accept');
+      const ok = document.getElementById('tos-modal-confirm');
+      cb.addEventListener('change', () => { ok.disabled = !cb.checked; });
+      ok.addEventListener('click', () => {
+        if (!cb.checked) return;
+        localStorage.setItem(acceptedKey, '1');
+        m.classList.add('hidden');
+        m.classList.remove('flex');
+      });
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+    }
 
-      const today = new Date().toISOString().slice(0, 10);
-      const acceptedKey = 'tos-accepted-' + (tos.pending_version || tos.current_version);
-      const dismissedKey = 'tos-dismissed-' + (tos.pending_version || tos.current_version);
-      const alreadyAccepted = localStorage.getItem(acceptedKey) === '1';
-
-      // CASE A: sostanziale, attivo, non accettato → modal bloccante
-      if (tos.pending_kind === 'substantial_worse'
-          && tos.pending_effective_from
-          && tos.pending_effective_from <= today
-          && !alreadyAccepted) {
-        const m = document.getElementById('tos-modal');
-        document.getElementById('tos-modal-detail').textContent =
-          `È in vigore dal ${tos.pending_effective_from} la versione ${tos.pending_version} dei Termini di Servizio. ` +
-          `Per continuare a usare Gi.Ve Engine devi confermare di averla letta e accettata.`;
-        document.getElementById('tos-modal-link').setAttribute(
-          'href', tos.notice_url || 'https://engine.givegroup.it/legal/termini.html');
-        const cb = document.getElementById('tos-modal-accept');
-        const ok = document.getElementById('tos-modal-confirm');
-        cb.addEventListener('change', () => { ok.disabled = !cb.checked; });
-        ok.addEventListener('click', () => {
-          if (!cb.checked) return;
-          localStorage.setItem(acceptedKey, '1');
-          m.classList.add('hidden');
-          m.classList.remove('flex');
-        });
-        m.classList.remove('hidden');
-        m.classList.add('flex');
-        return;
-      }
-
-      // CASE B: banner non-bloccante (pending ordinario OR draft in revisione)
-      if (sessionStorage.getItem(dismissedKey) === '1') return;
-
+    function showTosBanner(tos) {
       const show = (title, detail, link) => {
         document.getElementById('tos-banner-title').textContent  = title;
         document.getElementById('tos-banner-detail').textContent = detail;
@@ -1414,6 +1411,33 @@
           tos.notice_url || 'https://engine.givegroup.it/legal/terms-archive',
         );
       }
+    }
+
+    async function checkTosStatus() {
+      let tos = null;
+      try {
+        const r = await fetch('/system/tos-status');
+        if (r.ok) tos = await r.json();
+      } catch {}
+      if (!tos) return;
+
+      const today = new Date().toISOString().slice(0, 10);
+      const acceptedKey = 'tos-accepted-' + (tos.pending_version || tos.current_version);
+      const dismissedKey = 'tos-dismissed-' + (tos.pending_version || tos.current_version);
+      const alreadyAccepted = localStorage.getItem(acceptedKey) === '1';
+
+      // CASE A: sostanziale, attivo, non accettato → modal bloccante
+      if (tos.pending_kind === 'substantial_worse'
+          && tos.pending_effective_from
+          && tos.pending_effective_from <= today
+          && !alreadyAccepted) {
+        showTosModal(tos, acceptedKey);
+        return;
+      }
+
+      // CASE B: banner non-bloccante (pending ordinario OR draft in revisione)
+      if (sessionStorage.getItem(dismissedKey) === '1') return;
+      showTosBanner(tos);
     }
 
     function dismissTosBanner() {

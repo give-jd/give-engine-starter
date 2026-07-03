@@ -290,8 +290,10 @@
 
     const byokFb = document.getElementById('byok-feedback');
     function byokMsg(text, kind) {
-      byokFb.className = 'mt-2 text-xs ' + (
-        kind === 'ok' ? 'text-emerald-300' : kind === 'err' ? 'text-rose-300' : 'text-slate-400');
+      let tone = 'text-slate-400';
+      if (kind === 'ok') tone = 'text-emerald-300';
+      else if (kind === 'err') tone = 'text-rose-300';
+      byokFb.className = 'mt-2 text-xs ' + tone;
       byokFb.textContent = text;
       byokFb.classList.remove('hidden');
     }

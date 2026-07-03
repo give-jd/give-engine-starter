@@ -12,19 +12,19 @@ _MESI = {
     "novembre": 11, "dicembre": 12,
 }
 
-_RX_TOTALE = re.compile(r"Totale documento[^\d]*([0-9.]+,[0-9]{2})", re.I)
-_RX_TOTALE2 = re.compile(r"IMPORTO DA PAGARE\s*\n?\s*([0-9.]+,[0-9]{2})", re.I)
-_RX_SCADENZA = re.compile(r"SCADENZA\s+([0-9]{1,2}/[0-9]{1,2}/[0-9]{2,4})", re.I)
+_RX_TOTALE = re.compile(r"Totale documento[^\d]*([\d.]+,\d{2})", re.I)
+_RX_TOTALE2 = re.compile(r"IMPORTO DA PAGARE\s*\n?\s*([\d.]+,\d{2})", re.I)
+_RX_SCADENZA = re.compile(r"SCADENZA\s+(\d{1,2}/\d{1,2}/\d{2,4})", re.I)
 _RX_PERIODO_IT = re.compile(
-    r"([0-9]{1,2})\s+([A-Za-zàèéìòù]+)\s+([0-9]{4})\s*-\s*"
-    r"([0-9]{1,2})\s+([A-Za-zàèéìòù]+)\s+([0-9]{4})")
-_RX_MATRICOLA = re.compile(r"Matricola contatore:\s*([0-9]+)", re.I)
-_RX_INTEST = re.compile(r"Codice cliente:\s*[0-9]+\s*\n\s*([A-ZÀ-Ù'][A-ZÀ-Ù' ]+)")
-_RX_IVA22 = re.compile(r"Aliquota al 22,00%\s+([0-9.]+,[0-9]{2})\s+([0-9.]+,[0-9]{2})", re.I)
-_RX_LETTURA = re.compile(r"Utente\s+([0-9]{1,6})\b")
+    r"(\d{1,2})\s+([A-Za-zàèéìòù]+)\s+(\d{4})\s*-\s*"
+    r"(\d{1,2})\s+([A-Za-zàèéìòù]+)\s+(\d{4})")
+_RX_MATRICOLA = re.compile(r"Matricola contatore:\s*(\d+)", re.I)
+_RX_INTEST = re.compile(r"Codice cliente:\s*\d+\s*\n\s*([A-ZÀ-Ù'][A-ZÀ-Ù' ]+)")
+_RX_IVA22 = re.compile(r"Aliquota al 22,00%\s+([\d.]+,\d{2})\s+([\d.]+,\d{2})", re.I)
+_RX_LETTURA = re.compile(r"Utente\s+(\d{1,6})\b")
 # DETTAGLIO LETTURE: "<matricola> <data> <lettura assoluta> Utente <consumo>"
 _RX_DETTAGLIO = re.compile(
-    r"\b\d{6,}\s+([0-9]{1,2}/[0-9]{1,2}/[0-9]{2,4})\s+([0-9]+)\s+Utente\b")
+    r"\b\d{6,}\s+(\d{1,2}/\d{1,2}/\d{2,4})\s+(\d+)\s+Utente\b")
 
 
 def _to_iso_num(d: str) -> str:

@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from core.system import get_pref as _get_pref
+from core.system import prefs_transaction as _prefs_transaction
 from core.system import set_pref as _set_pref
 
 _KEY = "installed_recipes"
@@ -40,7 +41,8 @@ def _save(rows: list[dict]) -> None:
 
 
 def register_installed(
-    slug: str, *, port: int | None, version: str | None, output_dir: str | None
+    slug: str, *, port: int | None, version: str | None, output_dir: str | None,
+    expose_lan: bool | None = None,
 ) -> None:
     """Registra (o aggiorna) una ricetta come installata.
 
@@ -49,19 +51,33 @@ def register_installed(
         port: Porta locale assegnata.
         version: Versione installata.
         output_dir: Directory dell'app generata.
+        expose_lan: Scelta "usa da smartphone" fatta al build (bind 0.0.0.0).
+            None se sconosciuta (ricette ready-app: si usa la pref globale).
     """
-    rows = [r for r in _load() if r.get("slug") != slug]
-    rows.append(
-        {
-            "slug": slug,
-            "version": version,
-            "porta": port,
-            "status": "installed",
-            "output_dir": output_dir,
-            "installed_at": datetime.now(timezone.utc).isoformat(),
-        }
-    )
-    _save(rows)
+    # Transazione: load→muta lista→save sotto un unico lock, così due
+    # register_installed concorrenti (build + open) non si perdono a vicenda.
+    with _prefs_transaction():
+        rows = [r for r in _load() if r.get("slug") != slug]
+        rows.append(
+            {
+                "slug": slug,
+                "version": version,
+                "porta": port,
+                "status": "installed",
+                "output_dir": output_dir,
+                "expose_lan": expose_lan,
+                "installed_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+        _save(rows)
+
+
+def get_row(slug: str) -> dict | None:
+    """Riga di registro per ``slug``, o None se non installata."""
+    for r in _load():
+        if r.get("slug") == slug:
+            return r
+    return None
 
 
 def is_installed(slug: str) -> bool:

@@ -47,11 +47,8 @@ def _items_section(key, lang, sec, items, role_field, org_fields, has_corrente):
     return _section(key, lang, sec, "".join(parts))
 
 
-def render_body(d: dict) -> str:
-    lang = d.get("lang") or "it"
-    p = d.get("personal", {})
-
-    # ---- header ----
+def _render_header(p: dict, lang: str) -> str:
+    """Header: foto opzionale, nome e righe contatto valorizzate."""
     photo = f'<img class="cv-photo" alt="" src="{esc(p.get("foto"))}">' if p.get("foto") else ""
     name = esc(f'{p.get("nome", "")} {p.get("cognome", "")}'.strip())
     contact_rows = []
@@ -62,31 +59,42 @@ def render_body(d: dict) -> str:
         if val:
             contact_rows.append(f'<div class="cv-contact"><span class="cv-contact-label">{esc(i18n.t(key, lang))}'
                                 f'</span><span class="cv-contact-value">{esc(val)}</span></div>')
-    header = (f'<header class="cv-header">{photo}<h1 class="cv-name">{name}</h1>'
-              f'<div class="cv-contacts">{"".join(contact_rows)}</div></header>')
+    return (f'<header class="cv-header">{photo}<h1 class="cv-name">{name}</h1>'
+            f'<div class="cv-contacts">{"".join(contact_rows)}</div></header>')
 
-    # ---- side: lingue (doppia forma), digitali, soft, patente ----
+
+def _lingue_section(lingue: list, lang: str) -> str:
+    """Sezione lingue in doppia forma (lista compatta + griglia); "" se vuota."""
+    if not lingue:
+        return ""
+    compact = "".join(f'<li>{esc(ln.get("lingua", ""))} — {esc(ln.get("livello", ""))}</li>' for ln in lingue)
+    head = "".join(f"<th>{esc(i18n.t(h, lang)) if h else ''}</th>" for h in ("", "comprensione", "parlato", "scritto"))
+    rows = "".join(
+        f'<tr><td class="cv-lang-name">{esc(ln.get("lingua", ""))}</td>'
+        + f'<td class="cv-lang-level">{esc(ln.get("livello", ""))}</td>' * 3 + "</tr>"
+        for ln in lingue)
+    inner = (f'<ul class="cv-lang-compact">{compact}</ul>'
+             f'<table class="cv-lang-grid"><tr>{head}</tr>{rows}</table>')
+    return _section("lingue", lang, "lingue", inner)
+
+
+def _side_parts(comp: dict, lang: str) -> list[str]:
+    """Colonna laterale: lingue (doppia forma), digitali, soft, patente."""
     side_parts = []
-    comp = d.get("competenze", {})
-    lingue = comp.get("lingue", [])
-    if lingue:
-        compact = "".join(f'<li>{esc(l.get("lingua", ""))} — {esc(l.get("livello", ""))}</li>' for l in lingue)
-        head = "".join(f"<th>{esc(i18n.t(h, lang)) if h else ''}</th>" for h in ("", "comprensione", "parlato", "scritto"))
-        rows = "".join(
-            f'<tr><td class="cv-lang-name">{esc(l.get("lingua", ""))}</td>'
-            + f'<td class="cv-lang-level">{esc(l.get("livello", ""))}</td>' * 3 + "</tr>"
-            for l in lingue)
-        inner = (f'<ul class="cv-lang-compact">{compact}</ul>'
-                 f'<table class="cv-lang-grid"><tr>{head}</tr>{rows}</table>')
-        side_parts.append(_section("lingue", lang, "lingue", inner))
+    lingue_html = _lingue_section(comp.get("lingue", []), lang)
+    if lingue_html:
+        side_parts.append(lingue_html)
     for key, sec in (("digitali", "digitali"), ("soft", "soft")):
         lst = _simple_list(comp.get(key))
         if lst:
             side_parts.append(_section(key, lang, sec, lst))
     if str(comp.get("patente", "")).strip():
         side_parts.append(_section("patente", lang, "patente", f'<p class="cv-text">{esc(comp["patente"])}</p>'))
+    return side_parts
 
-    # ---- main: profilo, esperienze, istruzione, certificazioni, pubblicazioni, note ----
+
+def _main_parts(d: dict, lang: str) -> list[str]:
+    """Colonna principale: profilo, esperienze, istruzione, certificazioni, pubblicazioni, note."""
     main_parts = []
     if str(d.get("profilo", "")).strip():
         main_parts.append(_section("profilo", lang, "profilo", _paragraphs(d["profilo"])))
@@ -103,24 +111,32 @@ def render_body(d: dict) -> str:
             main_parts.append(_section(key, lang, sec, lst))
     if str(extra.get("note", "")).strip():
         main_parts.append(_section("note", lang, "note", _paragraphs(extra["note"])))
+    return main_parts
 
-    # ---- privacy: figlia diretta del wrapper, sempre in coda ----
-    privacy = ""
+
+def _privacy_block(d: dict, lang: str) -> str:
+    """Blocco privacy, figlio diretto del wrapper; "" se tipo "nessuna" o testo vuoto."""
     ptipo = d.get("privacy", {}).get("tipo", "standard-it")
-    if ptipo != "nessuna":
-        text = d["privacy"].get("testoCustom", "") if ptipo == "custom" else i18n.PRIVACY_TEXTS.get(ptipo, "")
-        if text:
-            sign = ""
-            if d["privacy"].get("dataFirma"):
-                sign = (f'<div class="cv-sign-row"><span>{esc(i18n.t("data", lang))}: ____________</span>'
-                        f'<span>{esc(i18n.t("firma", lang))}: ____________________</span></div>')
-            privacy = (f'<div class="cv-section cv-privacy" data-sec="privacy">'
-                       f'<p class="cv-privacy-text">{esc(text)}</p>{sign}</div>')
+    if ptipo == "nessuna":
+        return ""
+    text = d["privacy"].get("testoCustom", "") if ptipo == "custom" else i18n.PRIVACY_TEXTS.get(ptipo, "")
+    if not text:
+        return ""
+    sign = ""
+    if d["privacy"].get("dataFirma"):
+        sign = (f'<div class="cv-sign-row"><span>{esc(i18n.t("data", lang))}: ____________</span>'
+                f'<span>{esc(i18n.t("firma", lang))}: ____________________</span></div>')
+    return (f'<div class="cv-section cv-privacy" data-sec="privacy">'
+            f'<p class="cv-privacy-text">{esc(text)}</p>{sign}</div>')
 
+
+def render_body(d: dict) -> str:
+    lang = d.get("lang") or "it"
+    header = _render_header(d.get("personal", {}), lang)
     return (header
-            + f'<div class="cv-side">{"".join(side_parts)}</div>'
-            + f'<div class="cv-main">{"".join(main_parts)}</div>'
-            + privacy)
+            + f'<div class="cv-side">{"".join(_side_parts(d.get("competenze", {}), lang))}</div>'
+            + f'<div class="cv-main">{"".join(_main_parts(d, lang))}</div>'
+            + _privacy_block(d, lang))
 
 
 _TOOLBAR_CSS = """

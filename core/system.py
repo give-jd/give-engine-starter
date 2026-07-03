@@ -15,6 +15,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
+from contextlib import contextmanager
 from pathlib import Path
 
 
@@ -46,6 +48,13 @@ def shortcut_location_label() -> str:
     }.get(os_name(), "Menu delle Applicazioni")
 
 
+# Serializza il ciclo read-modify-write di preferences.json: gli endpoint della
+# Cabina e i task di boot possono scrivere pref da thread diversi, e una write
+# non atomica su file condiviso perde aggiornamenti o lascia JSON troncato (bug:
+# il toggle "esponi su LAN", unica pref non OS-backed, spariva).
+_PREFS_LOCK = threading.RLock()
+
+
 def _load_prefs() -> dict:
     if not PREFS_FILE.exists():
         return {}
@@ -57,7 +66,20 @@ def _load_prefs() -> dict:
 
 def _save_prefs(data: dict) -> None:
     PREFS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    PREFS_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    payload = json.dumps(data, indent=2, ensure_ascii=False)
+    # Scrittura atomica: tmp nella stessa dir + os.replace, così una lettura
+    # concorrente vede sempre il file vecchio o quello nuovo, mai troncato.
+    fd, tmp = tempfile.mkstemp(dir=str(PREFS_FILE.parent), prefix=".prefs-", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(payload)
+        os.replace(tmp, PREFS_FILE)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def get_pref(key: str, default=None):
@@ -65,9 +87,20 @@ def get_pref(key: str, default=None):
 
 
 def set_pref(key: str, value) -> None:
-    data = _load_prefs()
-    data[key] = value
-    _save_prefs(data)
+    with _PREFS_LOCK:
+        data = _load_prefs()
+        data[key] = value
+        _save_prefs(data)
+
+
+@contextmanager
+def prefs_transaction():
+    """Serializza un read-modify-write composito (più get/set su
+    preferences.json, es. la lista ``installed_recipes``) sotto lo stesso lock
+    di ``set_pref``. ``_PREFS_LOCK`` è reentrant, quindi i ``set_pref`` annidati
+    nel blocco non si autobloccano."""
+    with _PREFS_LOCK:
+        yield
 
 
 def is_first_launch() -> bool:

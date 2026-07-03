@@ -19,6 +19,7 @@ BOLLETTE_DB = DB_PATH.parent / "bollette-watcher.db"
 SCADENZE_DB = DB_PATH.parent / "scadenze-auto-casa.db"
 
 UNITA_DEFAULT = {"gas": "smc", "luce": "kWh", "acqua": "mc"}
+COL_POD_PDR = "POD/PDR"
 ARERA_GAS_WINDOW = (25, 5)
 
 
@@ -225,7 +226,7 @@ def main() -> None:
         if utenze:
             df_u = pd.DataFrame(utenze)[["tipo", "alias_utente", "codice_pod_pdr",
                                           "fornitore_attuale", "unita_misura"]]
-            df_u.columns = ["Tipo", "Alias", "POD/PDR", "Fornitore", "Unità"]
+            df_u.columns = ["Tipo", "Alias", COL_POD_PDR, "Fornitore", "Unità"]
             st.dataframe(df_u, use_container_width=True, hide_index=True)
         else:
             st.info("Nessuna utenza configurata. Importala da Bollette Watcher o aggiungila a mano.")
@@ -244,7 +245,7 @@ def main() -> None:
                     preview.append({**b, "_key": key, "_new": key not in existing})
                 df_bw = pd.DataFrame([{
                     "Tipo": p["tipo"], "Alias": p["alias"] or "—",
-                    "POD/PDR": p["pod_pdr"] or "—", "Fornitore": p["fornitore"] or "—",
+                    COL_POD_PDR: p["pod_pdr"] or "—", "Fornitore": p["fornitore"] or "—",
                     "Stato": "nuova" if p["_new"] else "già presente",
                 } for p in preview])
                 st.dataframe(df_bw, use_container_width=True, hide_index=True)
@@ -348,7 +349,7 @@ def main() -> None:
                     preview = [{**c, "utenza_id": _match_utenza(c, utenze)}
                                for c in bollette_readings]
                     df_prev = pd.DataFrame([{
-                        "Tipo": p["tipo"], "POD/PDR": p["pod_pdr"] or "—",
+                        "Tipo": p["tipo"], COL_POD_PDR: p["pod_pdr"] or "—",
                         "Data": p["data"], "Valore": p["valore"],
                         "→ Utenza": next((u["alias_utente"] for u in utenze
                                           if u["id"] == p["utenza_id"]), "⚠️ nessun match"),

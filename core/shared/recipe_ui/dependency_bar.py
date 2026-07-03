@@ -41,7 +41,7 @@ def cabina_url() -> str:
     return str(url).rstrip("/")
 
 
-def _load_context(recipe_id: str, graph, installed):
+def _load_context(graph, installed):
     """Carica graph/installed se non forniti. Degrada a None su errore."""
     if graph is None:
         try:
@@ -76,7 +76,7 @@ def render(recipe_id: str, *, graph=None, installed=None) -> None:
         Degrada silenziosamente: se Streamlit non è disponibile o il caricamento
         del contesto fallisce, ritorna senza rompere l'app ricetta.
     """
-    graph, installed = _load_context(recipe_id, graph, installed)
+    graph, installed = _load_context(graph, installed)
     if graph is None:
         return
 

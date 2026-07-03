@@ -140,31 +140,28 @@ def get_storico(conn) -> list[dict]:
     return [dict(r) for r in cur.fetchall()]
 
 
-_FREQ_OPZIONI = [
-    "Ogni mese",
-    "Ogni N giorni (personalizzato)",
-    "Ogni 3 mesi",
-    "Ogni 6 mesi",
-    "Ogni 12 mesi",
-    "Ogni 24 mesi",
-    "Una tantum (non si ripete)",
-]
+FREQ_MONTHLY = "Ogni mese"
+FREQ_CUSTOM_DAYS = "Ogni N giorni (personalizzato)"
+FREQ_ONE_SHOT = "Una tantum (non si ripete)"
+# Label -> number of months (days = months * 30).
+FREQ_MONTHS = {"Ogni 3 mesi": 3, "Ogni 6 mesi": 6, "Ogni 12 mesi": 12, "Ogni 24 mesi": 24}
+
+_FREQ_OPZIONI = [FREQ_MONTHLY, FREQ_CUSTOM_DAYS, *FREQ_MONTHS, FREQ_ONE_SHOT]
 
 
 def _freq_default_label(tipo, giorni) -> str:
     """Etichetta selezionata per una scadenza esistente (per il form modifica)."""
     if tipo == "mensile":
-        return "Ogni mese"
+        return FREQ_MONTHLY
     if tipo == "una-tantum" or not giorni:
-        return "Una tantum (non si ripete)"
-    for label, mesi in (("Ogni 3 mesi", 3), ("Ogni 6 mesi", 6),
-                        ("Ogni 12 mesi", 12), ("Ogni 24 mesi", 24)):
+        return FREQ_ONE_SHOT
+    for label, mesi in FREQ_MONTHS.items():
         if int(giorni) == mesi * 30:
             return label
-    return "Ogni N giorni (personalizzato)"
+    return FREQ_CUSTOM_DAYS
 
 
-def _recurrence_inputs(key: str, def_label="Ogni mese", def_giorni=30):
+def _recurrence_inputs(key: str, def_label=FREQ_MONTHLY, def_giorni=30):
     """Selettore 'si ripete ogni' usabile dentro un form. Ritorna (tipo, giorni).
 
     Il number_input dei giorni è sempre visibile (i form non fanno rerun finché
@@ -174,13 +171,13 @@ def _recurrence_inputs(key: str, def_label="Ogni mese", def_giorni=30):
                           index=_FREQ_OPZIONI.index(def_label), key=f"{key}_freq")
     giorni = st.number_input("…ogni quanti giorni (solo se 'personalizzato')",
                              min_value=1, value=int(def_giorni or 30), step=1, key=f"{key}_gg")
-    if scelta == "Ogni mese":
+    if scelta == FREQ_MONTHLY:
         return "mensile", None
-    if scelta == "Una tantum (non si ripete)":
+    if scelta == FREQ_ONE_SHOT:
         return "una-tantum", None
-    if scelta == "Ogni N giorni (personalizzato)":
+    if scelta == FREQ_CUSTOM_DAYS:
         return "custom", int(giorni)
-    mesi = {"Ogni 3 mesi": 3, "Ogni 6 mesi": 6, "Ogni 12 mesi": 12, "Ogni 24 mesi": 24}[scelta]
+    mesi = FREQ_MONTHS[scelta]
     return "custom", mesi * 30
 
 

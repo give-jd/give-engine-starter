@@ -22,11 +22,11 @@ def is_available() -> bool:
         return False
 
 
-def estrai_ricorrenze(text: str, api_key: str | None) -> list[dict] | None:
+def estrai_ricorrenze(_text: str, api_key: str | None) -> list[dict] | None:
     """Estrae ricorrenze da testo libero via modello Anthropic (BYOK).
 
     Args:
-        text: Testo del calendario.
+        _text: Testo del calendario (usato dall'implementazione AI in v1.1).
         api_key: Chiave Anthropic dell'utente. Se assente -> None.
 
     Returns:
@@ -42,11 +42,11 @@ def estrai_ricorrenze(text: str, api_key: str | None) -> list[dict] | None:
         return None
 
 
-def classifica_foto(image_bytes: bytes, api_key: str | None) -> str | None:
+def classifica_foto(_image_bytes: bytes, api_key: str | None) -> str | None:
     """Classifica il materiale di un rifiuto da una foto (BYOK).
 
     Args:
-        image_bytes: Immagine (es. da ``st.camera_input``).
+        _image_bytes: Immagine (es. da ``st.camera_input``); usata dall'implementazione visione in v1.1.
         api_key: Chiave Anthropic dell'utente.
 
     Returns:

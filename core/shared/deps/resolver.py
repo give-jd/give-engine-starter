@@ -144,42 +144,30 @@ def _is_semver(value: str) -> bool:
     return len(parts) == 3 and all(p.isdigit() for p in parts)
 
 
-def validate(graph: DependencyGraph) -> list[str]:
-    """Valida il grafo. Restituisce la lista di messaggi d'errore (vuota se ok).
-
-    Controlla: slug dipendenza inesistente, ciclo sulle ``required``,
-    tier-violation (una ``required`` non può avere tier superiore alla ricetta),
-    ``min_version`` malformata.
-
-    Args:
-        graph: Grafo completo.
-
-    Returns:
-        Lista di stringhe d'errore in italiano (vuota = grafo valido).
-    """
+def _node_dep_errors(slug: str, node: RecipeNode, graph: DependencyGraph) -> list[str]:
+    """Errors for a single node's deps: missing slug, bad semver, tier violation."""
     errors: list[str] = []
+    for dep in node.deps:
+        target = graph.nodes.get(dep.slug)
+        if target is None:
+            errors.append(f"Ricetta '{slug}': dipendenza '{dep.slug}' inesistente nel catalogo.")
+            continue
+        if dep.min_version is not None and not _is_semver(dep.min_version):
+            errors.append(
+                f"Ricetta '{slug}': min_version '{dep.min_version}' per '{dep.slug}' "
+                "non è semver X.Y.Z."
+            )
+        if dep.kind == "required" and _TIER_RANK.get(target.tier, 0) > _TIER_RANK.get(node.tier, 0):
+            errors.append(
+                f"Ricetta '{slug}' (tier {node.tier}): dipendenza required "
+                f"'{dep.slug}' ha tier superiore ({target.tier}) — violazione tier."
+            )
+    return errors
 
-    for slug, node in graph.nodes.items():
-        for dep in node.deps:
-            target = graph.nodes.get(dep.slug)
-            if target is None:
-                errors.append(f"Ricetta '{slug}': dipendenza '{dep.slug}' inesistente nel catalogo.")
-                continue
-            if dep.min_version is not None and not _is_semver(dep.min_version):
-                errors.append(
-                    f"Ricetta '{slug}': min_version '{dep.min_version}' per '{dep.slug}' "
-                    "non è semver X.Y.Z."
-                )
-            if dep.kind == "required":
-                rank_recipe = _TIER_RANK.get(node.tier, 0)
-                rank_dep = _TIER_RANK.get(target.tier, 0)
-                if rank_dep > rank_recipe:
-                    errors.append(
-                        f"Ricetta '{slug}' (tier {node.tier}): dipendenza required "
-                        f"'{dep.slug}' ha tier superiore ({target.tier}) — violazione tier."
-                    )
 
-    # cicli sulle required
+def _required_cycle_errors(graph: DependencyGraph) -> list[str]:
+    """Errors for cycles along the ``required`` edges (DFS over the whole graph)."""
+    errors: list[str] = []
     visiting: set[str] = set()
     done: set[str] = set()
 
@@ -199,5 +187,24 @@ def validate(graph: DependencyGraph) -> list[str]:
 
     for slug in graph.nodes:
         visit(slug, ())
+    return errors
 
+
+def validate(graph: DependencyGraph) -> list[str]:
+    """Valida il grafo. Restituisce la lista di messaggi d'errore (vuota se ok).
+
+    Controlla: slug dipendenza inesistente, ciclo sulle ``required``,
+    tier-violation (una ``required`` non può avere tier superiore alla ricetta),
+    ``min_version`` malformata.
+
+    Args:
+        graph: Grafo completo.
+
+    Returns:
+        Lista di stringhe d'errore in italiano (vuota = grafo valido).
+    """
+    errors: list[str] = []
+    for slug, node in graph.nodes.items():
+        errors.extend(_node_dep_errors(slug, node, graph))
+    errors.extend(_required_cycle_errors(graph))
     return errors
